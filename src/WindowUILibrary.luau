@@ -1,9 +1,52 @@
 --!strict
 
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
+local rawGame = game
+
+local function getGlobal(name: string): any?
+	local ok, env = pcall(getfenv, 0)
+	if ok and type(env) == "table" then
+		if env[name] ~= nil then
+			return env[name]
+		end
+
+		for _, getterName in ipairs({ "getgenv", "getrenv" }) do
+			local getter = env[getterName]
+			if type(getter) == "function" then
+				local gotEnvOk, gotEnv = pcall(getter)
+				if gotEnvOk and type(gotEnv) == "table" and gotEnv[name] ~= nil then
+					return gotEnv[name]
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+local executorCloneRef = getGlobal("cloneref")
+
+local function cloneRef<T>(instance: T): T
+	if type(executorCloneRef) ~= "function" then
+		return instance
+	end
+
+	local ok, cloned = pcall(executorCloneRef, instance)
+	if ok and cloned ~= nil then
+		return cloned
+	end
+
+	return instance
+end
+
+local function getService<T>(serviceName: string): T
+	return cloneRef((rawGame :: any):GetService(serviceName)) :: T
+end
+
+local Players = getService("Players") :: Players
+local CoreGui = getService("CoreGui") :: CoreGui
+local TweenService = getService("TweenService") :: TweenService
+local UserInputService = getService("UserInputService") :: UserInputService
+local Workspace = getService("Workspace") :: Workspace
 
 local LOCAL_PLAYER = Players.LocalPlayer
 
@@ -36,6 +79,7 @@ export type TopbarPlusConfig = {
 	Source: string?,
 	Icon: any?,
 	Align: string?,
+	Label: string?,
 	Caption: string?,
 	Order: number?,
 	Width: number?,
@@ -49,6 +93,7 @@ export type WindowConfig = {
 	Parent: Instance?,
 	Size: UDim2?,
 	Position: UDim2?,
+	Scale: number?,
 	StartOpen: boolean?,
 	DisplayOrder: number?,
 	ResetOnSpawn: boolean?,
@@ -105,19 +150,19 @@ local DEFAULT_TOPBARPLUS_SOURCE =
 	"https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"
 
 local DEFAULT_THEME = {
-	Accent = Color3.fromRGB(38, 116, 255),
-	Window = Color3.fromRGB(17, 19, 26),
-	Topbar = Color3.fromRGB(7, 8, 12),
-	TopbarText = Color3.fromRGB(245, 247, 255),
-	Surface = Color3.fromRGB(30, 33, 43),
-	SurfaceStrong = Color3.fromRGB(42, 46, 58),
-	Tile = Color3.fromRGB(26, 29, 38),
-	TileHover = Color3.fromRGB(43, 48, 63),
-	Button = Color3.fromRGB(42, 47, 61),
-	ButtonHover = Color3.fromRGB(56, 63, 80),
-	Text = Color3.fromRGB(244, 246, 252),
-	MutedText = Color3.fromRGB(159, 168, 188),
-	Stroke = Color3.fromRGB(78, 86, 108),
+	Accent = Color3.fromRGB(94, 151, 255),
+	Window = Color3.fromRGB(24, 27, 36),
+	Topbar = Color3.fromRGB(18, 20, 28),
+	TopbarText = Color3.fromRGB(238, 241, 248),
+	Surface = Color3.fromRGB(31, 35, 46),
+	SurfaceStrong = Color3.fromRGB(42, 47, 61),
+	Tile = Color3.fromRGB(32, 36, 47),
+	TileHover = Color3.fromRGB(48, 54, 70),
+	Button = Color3.fromRGB(38, 43, 56),
+	ButtonHover = Color3.fromRGB(53, 60, 77),
+	Text = Color3.fromRGB(238, 241, 247),
+	MutedText = Color3.fromRGB(165, 173, 190),
+	Stroke = Color3.fromRGB(73, 82, 104),
 	Shadow = Color3.fromRGB(0, 0, 0),
 	Danger = Color3.fromRGB(255, 91, 91),
 }
@@ -131,6 +176,31 @@ local function getPlayerGui(): Instance
 	end
 
 	error("WindowUILibrary must run from a LocalScript so Players.LocalPlayer exists.")
+end
+
+local function getExecutorGuiParent(): Instance
+	local getHui = getGlobal("gethui")
+	if type(getHui) == "function" then
+		local ok, hui = pcall(getHui)
+		if ok and typeof(hui) == "Instance" then
+			return cloneRef(hui)
+		end
+	end
+
+	return CoreGui
+end
+
+local function protectGui(gui: ScreenGui)
+	local protect = getGlobal("protectgui")
+	if type(protect) == "function" then
+		pcall(protect, gui)
+		return
+	end
+
+	local syn = getGlobal("syn")
+	if type(syn) == "table" and type(syn.protect_gui) == "function" then
+		pcall(syn.protect_gui, gui)
+	end
 end
 
 local function create(className: string, props: { [string]: any }): any
@@ -298,16 +368,16 @@ local function drawWindowsGlyph(parent: GuiObject, name: string?)
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(18, 18),
+		Size = UDim2.fromOffset(16, 16),
 		ZIndex = (parent.ZIndex or 1) + 2,
 		Parent = parent,
 	}) :: Frame
 
 	local paneData = {
 		UDim2.fromOffset(1, 1),
-		UDim2.fromOffset(10, 1),
-		UDim2.fromOffset(1, 10),
-		UDim2.fromOffset(10, 10),
+		UDim2.fromOffset(9, 1),
+		UDim2.fromOffset(1, 9),
+		UDim2.fromOffset(9, 9),
 	}
 
 	for index, position in ipairs(paneData) do
@@ -316,7 +386,7 @@ local function drawWindowsGlyph(parent: GuiObject, name: string?)
 			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			BorderSizePixel = 0,
 			Position = position,
-			Size = UDim2.fromOffset(7, 7),
+			Size = UDim2.fromOffset(6, 6),
 			ZIndex = glyph.ZIndex + 1,
 			Parent = glyph,
 		})
@@ -341,15 +411,6 @@ local function bindButtonMotion(owner: any, button: GuiButton, normal: Color3, h
 	end))
 end
 
-local function getGlobal(name: string): any?
-	local ok, env = pcall(getfenv, 0)
-	if ok and type(env) == "table" then
-		return env[name]
-	end
-
-	return nil
-end
-
 local function loadTopbarIcon(source: string): any?
 	local loader = getGlobal("loadstring")
 	if type(loader) ~= "function" then
@@ -357,7 +418,7 @@ local function loadTopbarIcon(source: string): any?
 	end
 
 	local ok, result = pcall(function()
-		local code = (game :: any):HttpGet(source)
+		local code = (cloneRef(rawGame) :: any):HttpGet(source)
 		local chunk = loader(code)
 		return chunk()
 	end)
@@ -424,8 +485,9 @@ function WindowUI:_buildRoot()
 		IgnoreGuiInset = false,
 		ResetOnSpawn = config.ResetOnSpawn == true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		Parent = config.Parent or getPlayerGui(),
 	}) :: ScreenGui
+	protectGui(self.ScreenGui)
+	self.ScreenGui.Parent = config.Parent or getExecutorGuiParent() or getPlayerGui()
 
 	self.Window = create("Frame", {
 		Name = "FloatWindow",
@@ -434,18 +496,22 @@ function WindowUI:_buildRoot()
 		BackgroundTransparency = 0.03,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
-		Position = config.Position or UDim2.new(0.5, -280, 0.5, -180),
-		Size = config.Size or UDim2.fromOffset(560, 360),
+		Position = config.Position or UDim2.new(0.5, -250, 0.5, -160),
+		Size = config.Size or UDim2.fromOffset(500, 320),
 		Visible = config.StartOpen ~= false,
 		Parent = self.ScreenGui,
 	}) :: Frame
 
 	self._baseSize = self.Window.Size
 	self._basePosition = self.Window.Position
+	self.WindowScale = create("UIScale", {
+		Scale = config.Scale or 0.94,
+		Parent = self.Window,
+	}) :: UIScale
 
 	create("UISizeConstraint", {
-		MinSize = Vector2.new(300, 260),
-		MaxSize = Vector2.new(880, 620),
+		MinSize = Vector2.new(288, 238),
+		MaxSize = Vector2.new(820, 560),
 		Parent = self.Window,
 	})
 
@@ -469,7 +535,7 @@ function WindowUI:_buildTopbar()
 		Name = "Topbar",
 		BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 42),
+		Size = UDim2.new(1, 0, 0, 36),
 		ZIndex = 10,
 		Parent = self.Window,
 	}) :: Frame
@@ -484,18 +550,18 @@ function WindowUI:_buildTopbar()
 		ZIndex = 11,
 		Parent = self.Topbar,
 	}) :: TextLabel
-	setText(title, theme.TopbarText or DEFAULT_THEME.TopbarText, 15, Enum.Font.GothamMedium)
+	setText(title, theme.TopbarText or DEFAULT_THEME.TopbarText, 13, Enum.Font.GothamMedium)
 
 	self.MinimizeButton = create("TextButton", {
 		Name = "Minimize",
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar,
 		BorderSizePixel = 0,
-		Position = UDim2.new(1, -42, 0, 0),
-		Size = UDim2.fromOffset(42, 42),
+		Position = UDim2.new(1, -36, 0, 0),
+		Size = UDim2.fromOffset(36, 36),
 		Text = "-",
 		TextColor3 = theme.TopbarText or DEFAULT_THEME.TopbarText,
-		TextSize = 20,
+		TextSize = 18,
 		Font = Enum.Font.GothamBold,
 		ZIndex = 12,
 		Parent = self.Topbar,
@@ -520,8 +586,8 @@ function WindowUI:_buildBody()
 		Name = "Body",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 42),
-		Size = UDim2.new(1, 0, 1, -42),
+		Position = UDim2.fromOffset(0, 36),
+		Size = UDim2.new(1, 0, 1, -36),
 		Parent = self.Window,
 	}) :: Frame
 
@@ -537,13 +603,13 @@ function WindowUI:_buildBody()
 	local homeTitle = create("TextLabel", {
 		Name = "HomeTitle",
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(18, 12),
-		Size = UDim2.new(1, -36, 0, 24),
+		Position = UDim2.fromOffset(16, 10),
+		Size = UDim2.new(1, -32, 0, 22),
 		Text = "Apps",
 		ZIndex = 2,
 		Parent = self.HomePage,
 	}) :: TextLabel
-	setText(homeTitle, theme.Text or DEFAULT_THEME.Text, 18, Enum.Font.GothamSemibold)
+	setText(homeTitle, theme.Text or DEFAULT_THEME.Text, 16, Enum.Font.GothamSemibold)
 
 	self.AppGridScroll = create("ScrollingFrame", {
 		Name = "AppGrid",
@@ -551,18 +617,18 @@ function WindowUI:_buildBody()
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.fromOffset(0, 0),
-		Position = UDim2.fromOffset(12, 48),
+		Position = UDim2.fromOffset(10, 42),
 		ScrollBarImageColor3 = theme.MutedText or DEFAULT_THEME.MutedText,
-		ScrollBarThickness = 4,
-		Size = UDim2.new(1, -24, 1, -60),
+		ScrollBarThickness = 3,
+		Size = UDim2.new(1, -20, 1, -52),
 		ZIndex = 2,
 		Parent = self.HomePage,
 	}) :: ScrollingFrame
-	addPadding(self.AppGridScroll, 6, 4, 6, 12)
+	addPadding(self.AppGridScroll, 5, 3, 5, 10)
 
 	self.AppGrid = create("UIGridLayout", {
-		CellPadding = UDim2.fromOffset(10, 10),
-		CellSize = UDim2.fromOffset(92, 94),
+		CellPadding = UDim2.fromOffset(9, 9),
+		CellSize = UDim2.fromOffset(80, 82),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = self.AppGridScroll,
 	}) :: UIGridLayout
@@ -616,8 +682,8 @@ function WindowUI:_buildBody()
 		Name = "AppHeader",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(12, 10),
-		Size = UDim2.new(1, -24, 0, 44),
+		Position = UDim2.fromOffset(10, 8),
+		Size = UDim2.new(1, -20, 0, 38),
 		ZIndex = 3,
 		Parent = self.AppPage,
 	}) :: Frame
@@ -627,10 +693,10 @@ function WindowUI:_buildBody()
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BorderSizePixel = 0,
-		Size = UDim2.fromOffset(36, 36),
+		Size = UDim2.fromOffset(32, 32),
 		Text = "<",
 		TextColor3 = theme.Text or DEFAULT_THEME.Text,
-		TextSize = 18,
+		TextSize = 16,
 		Font = Enum.Font.GothamBold,
 		ZIndex = 4,
 		Parent = appHeader,
@@ -651,8 +717,8 @@ function WindowUI:_buildBody()
 		Name = "AppIcon",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(48, 2),
-		Size = UDim2.fromOffset(32, 32),
+		Position = UDim2.fromOffset(44, 3),
+		Size = UDim2.fromOffset(26, 26),
 		ZIndex = 4,
 		Parent = appHeader,
 	}) :: ImageLabel
@@ -660,14 +726,14 @@ function WindowUI:_buildBody()
 	self.AppTitle = create("TextLabel", {
 		Name = "AppTitle",
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(88, 0),
-		Size = UDim2.new(1, -92, 0, 36),
+		Position = UDim2.fromOffset(78, 0),
+		Size = UDim2.new(1, -82, 0, 32),
 		Text = "",
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 4,
 		Parent = appHeader,
 	}) :: TextLabel
-	setText(self.AppTitle, theme.Text or DEFAULT_THEME.Text, 18, Enum.Font.GothamSemibold)
+	setText(self.AppTitle, theme.Text or DEFAULT_THEME.Text, 16, Enum.Font.GothamSemibold)
 
 	self.ContentScroll = create("ScrollingFrame", {
 		Name = "Content",
@@ -675,10 +741,10 @@ function WindowUI:_buildBody()
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.fromOffset(0, 0),
-		Position = UDim2.fromOffset(18, 60),
+		Position = UDim2.fromOffset(14, 50),
 		ScrollBarImageColor3 = theme.MutedText or DEFAULT_THEME.MutedText,
-		ScrollBarThickness = 4,
-		Size = UDim2.new(1, -36, 1, -74),
+		ScrollBarThickness = 3,
+		Size = UDim2.new(1, -28, 1, -62),
 		ZIndex = 3,
 		Parent = self.AppPage,
 	}) :: ScrollingFrame
@@ -725,17 +791,19 @@ function WindowUI:_bindResponsiveLayout()
 		local mobile = viewport.X <= 700
 
 		if mobile then
-			self.Window.Size = UDim2.new(1, -24, 0, math.clamp(viewport.Y - 92, 300, 430))
+			self.WindowScale.Scale = 1
+			self.Window.Size = UDim2.new(1, -22, 0, math.clamp(viewport.Y - 88, 286, 400))
 			if not self._wasDragged then
 				self.Window.Position = UDim2.fromOffset(12, 56)
 			end
-			self.AppGrid.CellSize = UDim2.fromOffset(82, 88)
+			self.AppGrid.CellSize = UDim2.fromOffset(76, 80)
 		else
+			self.WindowScale.Scale = self._config.Scale or 0.94
 			self.Window.Size = self._baseSize
 			if not self._wasDragged then
 				self.Window.Position = self._basePosition
 			end
-			self.AppGrid.CellSize = UDim2.fromOffset(92, 94)
+			self.AppGrid.CellSize = UDim2.fromOffset(80, 82)
 		end
 	end
 
@@ -785,7 +853,7 @@ function WindowUI:_setupTopbarPlus(configValue: boolean | TopbarPlusConfig?)
 	self._topbarIcon = icon
 
 	pcall(function()
-		icon:setLabel("")
+		icon:setLabel(config.Label or "⊞")
 	end)
 	pcall(function()
 		icon:setWidth(config.Width or 44)
@@ -809,18 +877,6 @@ function WindowUI:_setupTopbarPlus(configValue: boolean | TopbarPlusConfig?)
 		end)
 	end
 
-	pcall(function()
-		icon:modifyTheme({
-			{ "Widget", "BackgroundColor3", Color3.fromRGB(0, 0, 0) },
-			{ "Widget", "BackgroundTransparency", 0 },
-			{ "Widget", "MinimumWidth", config.Width or 44 },
-			{ "IconCorners", "CornerRadius", UDim.new(0, 0) },
-			{ "IconGradient", "Enabled", false },
-			{ "IconLabel", "TextColor3", Color3.fromRGB(255, 255, 255) },
-			{ "IconLabel", "TextSize", 1 },
-		})
-	end)
-
 	local connected = self:_connectIconSignal(icon.toggled, function(isOn: boolean)
 		if self._syncingTopbar then
 			return
@@ -841,27 +897,6 @@ function WindowUI:_setupTopbarPlus(configValue: boolean | TopbarPlusConfig?)
 		end)
 	end
 
-	if not config.Image then
-		task.defer(function()
-			pcall(function()
-				local label = icon:getInstance("IconLabel")
-				if label and label:IsA("GuiObject") then
-					label.Visible = false
-				end
-
-				local image = icon:getInstance("IconImage")
-				if image and image:IsA("GuiObject") then
-					image.Visible = false
-				end
-
-				local widget = icon:getInstance("Widget")
-				if widget and widget:IsA("GuiObject") then
-					drawWindowsGlyph(widget, "WindowUITopbarGlyph")
-				end
-			end)
-		end)
-	end
-
 	self:_syncTopbarIcon(self.Window.Visible)
 end
 
@@ -871,9 +906,10 @@ function WindowUI:_createFallbackTopbarButton()
 		AutoButtonColor = false,
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(12, 8),
-		Size = UDim2.fromOffset(44, 34),
+		Position = UDim2.fromOffset(12, 9),
+		Size = UDim2.fromOffset(38, 30),
 		Text = "",
+		Visible = not self.Window.Visible,
 		ZIndex = 100,
 		Parent = self.ScreenGui,
 	}) :: TextButton
@@ -884,7 +920,7 @@ function WindowUI:_createFallbackTopbarButton()
 
 	self.FallbackButton = button
 	self:_track(button.MouseButton1Click:Connect(function()
-		self:Toggle()
+		self:SetVisible(true)
 	end))
 end
 
@@ -895,12 +931,25 @@ function WindowUI:_syncTopbarIcon(visible: boolean)
 	end
 
 	self._syncingTopbar = true
-	local method = visible and icon.select or icon.deselect
-	if type(method) == "function" then
+
+	if type(icon.setEnabled) == "function" then
 		pcall(function()
-			method(icon)
+			icon:setEnabled(not visible)
 		end)
+		if not visible and type(icon.deselect) == "function" then
+			pcall(function()
+				icon:deselect()
+			end)
+		end
+	else
+		local method = visible and icon.select or icon.deselect
+		if type(method) == "function" then
+			pcall(function()
+				method(icon)
+			end)
+		end
 	end
+
 	self._syncingTopbar = false
 end
 
@@ -936,6 +985,9 @@ end
 function WindowUI:SetVisible(visible: boolean)
 	if self.Window.Visible == visible then
 		self:_syncTopbarIcon(visible)
+		if self.FallbackButton then
+			self.FallbackButton.Visible = not visible
+		end
 		return
 	end
 
@@ -948,6 +1000,9 @@ function WindowUI:SetVisible(visible: boolean)
 	end
 
 	self:_syncTopbarIcon(visible)
+	if self.FallbackButton then
+		self.FallbackButton.Visible = not visible
+	end
 end
 
 function WindowUI:Toggle()
@@ -1078,12 +1133,26 @@ function App:_createTile()
 		BackgroundColor3 = theme.Tile or DEFAULT_THEME.Tile,
 		BackgroundTransparency = 0.05,
 		BorderSizePixel = 0,
+		ClipsDescendants = false,
 		LayoutOrder = self.Order,
 		Text = "",
 		ZIndex = 3,
 		Parent = library.AppGridScroll,
 	}) :: TextButton
-	addStroke(tile, theme.Stroke or DEFAULT_THEME.Stroke, 0.55, 1)
+	local tileScale = create("UIScale", {
+		Scale = 1,
+		Parent = tile,
+	}) :: UIScale
+	local tileStroke = addStroke(tile, theme.Stroke or DEFAULT_THEME.Stroke, 0.62, 1)
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.Accent or DEFAULT_THEME.Accent),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(142, 230, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+		}),
+		Rotation = 35,
+		Parent = tileStroke,
+	})
 	bindButtonMotion(
 		library,
 		tile,
@@ -1091,6 +1160,34 @@ function App:_createTile()
 		theme.TileHover or DEFAULT_THEME.TileHover,
 		theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
 	)
+
+	local holding = false
+	local function renderHold(nextHolding: boolean)
+		if holding == nextHolding then
+			return
+		end
+
+		holding = nextHolding
+		tween(tileScale, TWEEN_FAST, { Scale = if holding then 1.09 else 1 })
+		tween(tileStroke, TWEEN_FAST, {
+			Transparency = if holding then 0.06 else 0.62,
+			Thickness = if holding then 2 else 1,
+		})
+	end
+
+	library:_track(tile.InputBegan:Connect(function(input)
+		if isPressInput(input) then
+			renderHold(true)
+		end
+	end))
+	library:_track(tile.MouseLeave:Connect(function()
+		renderHold(false)
+	end))
+	library:_track(UserInputService.InputEnded:Connect(function(input)
+		if isPressInput(input) then
+			renderHold(false)
+		end
+	end))
 
 	local tileImage = self.TileImage or self.BackgroundImage
 	if tileImage and tileImage ~= "" then
@@ -1124,9 +1221,9 @@ function App:_createTile()
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Image = self.Icon,
-			Position = UDim2.new(0.5, 0, 0, 12),
+			Position = UDim2.new(0.5, 0, 0, 10),
 			ScaleType = Enum.ScaleType.Fit,
-			Size = UDim2.fromOffset(38, 38),
+			Size = UDim2.fromOffset(30, 30),
 			ZIndex = 5,
 			Parent = tile,
 		})
@@ -1136,8 +1233,8 @@ function App:_createTile()
 			AnchorPoint = Vector2.new(0.5, 0),
 			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 			BorderSizePixel = 0,
-			Position = UDim2.new(0.5, 0, 0, 12),
-			Size = UDim2.fromOffset(38, 38),
+			Position = UDim2.new(0.5, 0, 0, 10),
+			Size = UDim2.fromOffset(30, 30),
 			ZIndex = 5,
 			Parent = tile,
 		}) :: Frame
@@ -1149,14 +1246,14 @@ function App:_createTile()
 		AnchorPoint = Vector2.new(0.5, 1),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0.5, 0, 1, -9),
-		Size = UDim2.new(1, -10, 0, 32),
+		Position = UDim2.new(0.5, 0, 1, -7),
+		Size = UDim2.new(1, -8, 0, 28),
 		Text = self.Name,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 5,
 		Parent = tile,
 	}) :: TextLabel
-	setText(label, theme.Text or DEFAULT_THEME.Text, 12, Enum.Font.GothamMedium)
+	setText(label, theme.Text or DEFAULT_THEME.Text, 11, Enum.Font.GothamMedium)
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextYAlignment = Enum.TextYAlignment.Center
 
@@ -1190,9 +1287,9 @@ function App:CreateSection(title: string): Frame
 		ZIndex = 5,
 		Parent = self.Content,
 	}) :: Frame
-	addStroke(section, theme.Stroke or DEFAULT_THEME.Stroke, 0.58, 1)
-	addPadding(section, 12, 10, 12, 12)
-	addList(section, 8)
+	addStroke(section, theme.Stroke or DEFAULT_THEME.Stroke, 0.64, 1)
+	addPadding(section, 10, 8, 10, 10)
+	addList(section, 7)
 
 	local label = create("TextLabel", {
 		Name = "SectionTitle",
@@ -1204,7 +1301,7 @@ function App:CreateSection(title: string): Frame
 		ZIndex = 6,
 		Parent = section,
 	}) :: TextLabel
-	setText(label, theme.Text or DEFAULT_THEME.Text, 14, Enum.Font.GothamSemibold)
+	setText(label, theme.Text or DEFAULT_THEME.Text, 13, Enum.Font.GothamSemibold)
 
 	return section
 end
@@ -1221,7 +1318,7 @@ function App:AddLabel(text: string, parent: GuiObject?): TextLabel
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
 	}) :: TextLabel
-	setText(label, theme.MutedText or DEFAULT_THEME.MutedText, 13, Enum.Font.Gotham)
+	setText(label, theme.MutedText or DEFAULT_THEME.MutedText, 12, Enum.Font.Gotham)
 	return label
 end
 
@@ -1232,10 +1329,10 @@ function App:AddButton(config: ButtonConfig, parent: GuiObject?): TextButton
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 38),
+		Size = UDim2.new(1, 0, 0, 34),
 		Text = config.Text,
 		TextColor3 = theme.Text or DEFAULT_THEME.Text,
-		TextSize = 13,
+		TextSize = 12,
 		Font = Enum.Font.GothamMedium,
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
@@ -1265,7 +1362,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		Name = "Toggle",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 34),
+		Size = UDim2.new(1, 0, 0, 30),
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
 	}) :: Frame
@@ -1274,12 +1371,12 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		Name = "Label",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -58, 1, 0),
+		Size = UDim2.new(1, -54, 1, 0),
 		Text = config.Text,
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextLabel
-	setText(label, theme.Text or DEFAULT_THEME.Text, 13, Enum.Font.Gotham)
+	setText(label, theme.Text or DEFAULT_THEME.Text, 12, Enum.Font.Gotham)
 
 	local button = create("TextButton", {
 		Name = "Switch",
@@ -1288,7 +1385,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BorderSizePixel = 0,
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(46, 24),
+		Size = UDim2.fromOffset(42, 22),
 		Text = "",
 		ZIndex = 7,
 		Parent = row,
@@ -1300,7 +1397,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.Text or DEFAULT_THEME.Text,
 		BorderSizePixel = 0,
 		Position = UDim2.fromOffset(3, 3),
-		Size = UDim2.fromOffset(18, 18),
+		Size = UDim2.fromOffset(16, 16),
 		ZIndex = 8,
 		Parent = button,
 	}) :: Frame
@@ -1309,7 +1406,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		button.BackgroundColor3 = if enabled
 			then (theme.Accent or DEFAULT_THEME.Accent)
 			else (theme.Button or DEFAULT_THEME.Button)
-		knob.Position = if enabled then UDim2.new(1, -21, 0, 3) else UDim2.fromOffset(3, 3)
+		knob.Position = if enabled then UDim2.new(1, -19, 0, 3) else UDim2.fromOffset(3, 3)
 		if fire then
 			safeValueCallback(config.Callback, enabled)
 		end
@@ -1337,50 +1434,55 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 
 	local row = create("Frame", {
 		Name = "Slider",
-		BackgroundTransparency = 1,
+		BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface,
+		BackgroundTransparency = 0.14,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 60),
+		Size = UDim2.new(1, 0, 0, 64),
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
 	}) :: Frame
+	addStroke(row, theme.Stroke or DEFAULT_THEME.Stroke, 0.7, 1)
 
 	local label = create("TextLabel", {
 		Name = "Label",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -72, 0, 24),
+		Position = UDim2.fromOffset(10, 6),
+		Size = UDim2.new(1, -88, 0, 22),
 		Text = config.Text,
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextLabel
-	setText(label, theme.Text or DEFAULT_THEME.Text, 13, Enum.Font.Gotham)
+	setText(label, theme.Text or DEFAULT_THEME.Text, 12, Enum.Font.GothamMedium)
 
 	local valueLabel = create("TextLabel", {
 		Name = "Value",
 		AnchorPoint = Vector2.new(1, 0),
-		BackgroundTransparency = 1,
+		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
+		BackgroundTransparency = 0.04,
 		BorderSizePixel = 0,
-		Position = UDim2.new(1, 0, 0, 0),
-		Size = UDim2.fromOffset(70, 24),
+		Position = UDim2.new(1, -10, 0, 6),
+		Size = UDim2.fromOffset(62, 22),
 		Text = "",
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextLabel
-	setText(valueLabel, theme.MutedText or DEFAULT_THEME.MutedText, 12, Enum.Font.Gotham)
-	valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+	setText(valueLabel, theme.Text or DEFAULT_THEME.Text, 11, Enum.Font.GothamMedium)
+	valueLabel.TextXAlignment = Enum.TextXAlignment.Center
+	addStroke(valueLabel, theme.Stroke or DEFAULT_THEME.Stroke, 0.82, 1)
 
 	local track = create("TextButton", {
 		Name = "Track",
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 34),
-		Size = UDim2.new(1, 0, 0, 10),
+		Position = UDim2.fromOffset(10, 42),
+		Size = UDim2.new(1, -20, 0, 8),
 		Text = "",
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextButton
-	addStroke(track, theme.Stroke or DEFAULT_THEME.Stroke, 0.7, 1)
+	addStroke(track, theme.Stroke or DEFAULT_THEME.Stroke, 0.76, 1)
 
 	local fill = create("Frame", {
 		Name = "Fill",
@@ -1390,6 +1492,14 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 		ZIndex = 7,
 		Parent = track,
 	}) :: Frame
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.Accent or DEFAULT_THEME.Accent),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 225, 255)),
+		}),
+		Rotation = 0,
+		Parent = fill,
+	})
 
 	local knob = create("Frame", {
 		Name = "Knob",
@@ -1397,10 +1507,11 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.Text or DEFAULT_THEME.Text,
 		BorderSizePixel = 0,
 		Position = UDim2.fromScale(0, 0.5),
-		Size = UDim2.fromOffset(12, 18),
+		Size = UDim2.fromOffset(10, 16),
 		ZIndex = 8,
 		Parent = track,
 	}) :: Frame
+	addStroke(knob, theme.Window or DEFAULT_THEME.Window, 0.2, 1)
 
 	local function snap(raw: number): number
 		if step <= 0 then
@@ -1461,7 +1572,7 @@ function App:AddTextBox(config: TextBoxConfig, parent: GuiObject?): Frame
 		Name = "TextBoxRow",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 66),
+		Size = UDim2.new(1, 0, 0, 60),
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
 	}) :: Frame
@@ -1470,12 +1581,12 @@ function App:AddTextBox(config: TextBoxConfig, parent: GuiObject?): Frame
 		Name = "Label",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 24),
+		Size = UDim2.new(1, 0, 0, 22),
 		Text = config.Text,
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextLabel
-	setText(label, theme.Text or DEFAULT_THEME.Text, 13, Enum.Font.Gotham)
+	setText(label, theme.Text or DEFAULT_THEME.Text, 12, Enum.Font.Gotham)
 
 	local box = create("TextBox", {
 		Name = "Input",
@@ -1483,11 +1594,11 @@ function App:AddTextBox(config: TextBoxConfig, parent: GuiObject?): Frame
 		BorderSizePixel = 0,
 		ClearTextOnFocus = false,
 		PlaceholderText = config.Placeholder or "",
-		Position = UDim2.fromOffset(0, 30),
-		Size = UDim2.new(1, 0, 0, 34),
+		Position = UDim2.fromOffset(0, 28),
+		Size = UDim2.new(1, 0, 0, 30),
 		Text = config.Default or "",
 		TextColor3 = theme.Text or DEFAULT_THEME.Text,
-		TextSize = 13,
+		TextSize = 12,
 		Font = Enum.Font.Gotham,
 		ZIndex = 6,
 		Parent = row,
@@ -1511,35 +1622,38 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 
 	local row = create("Frame", {
 		Name = "Dropdown",
-		BackgroundTransparency = 1,
+		BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface,
+		BackgroundTransparency = 0.14,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, 64),
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
 	}) :: Frame
+	addStroke(row, theme.Stroke or DEFAULT_THEME.Stroke, 0.7, 1)
 
 	local label = create("TextLabel", {
 		Name = "Label",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 24),
+		Position = UDim2.fromOffset(10, 5),
+		Size = UDim2.new(1, -20, 0, 22),
 		Text = config.Text,
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextLabel
-	setText(label, theme.Text or DEFAULT_THEME.Text, 13, Enum.Font.Gotham)
+	setText(label, theme.MutedText or DEFAULT_THEME.MutedText, 12, Enum.Font.GothamMedium)
 
 	local button = create("TextButton", {
 		Name = "Button",
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 30),
-		Size = UDim2.new(1, 0, 0, 34),
+		Position = UDim2.fromOffset(10, 29),
+		Size = UDim2.new(1, -20, 0, 30),
 		Text = selected,
 		TextColor3 = theme.Text or DEFAULT_THEME.Text,
-		TextSize = 13,
-		Font = Enum.Font.Gotham,
+		TextSize = 12,
+		Font = Enum.Font.GothamMedium,
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextButton
@@ -1554,12 +1668,30 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
 	)
 
+	local arrow = create("TextLabel", {
+		Name = "Arrow",
+		AnchorPoint = Vector2.new(1, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.new(1, -18, 0, 29),
+		Size = UDim2.fromOffset(18, 30),
+		Text = "v",
+		TextColor3 = theme.MutedText or DEFAULT_THEME.MutedText,
+		TextSize = 12,
+		Font = Enum.Font.GothamBold,
+		ZIndex = 7,
+		Parent = row,
+	}) :: TextLabel
+	arrow.TextXAlignment = Enum.TextXAlignment.Center
+	arrow.TextYAlignment = Enum.TextYAlignment.Center
+
 	local optionsFrame = create("Frame", {
 		Name = "Options",
 		BackgroundColor3 = theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong,
+		BackgroundTransparency = 0.03,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 70),
-		Size = UDim2.new(1, 0, 0, #options * 30),
+		Position = UDim2.fromOffset(10, 68),
+		Size = UDim2.new(1, -20, 0, #options * 28),
 		Visible = false,
 		ZIndex = 7,
 		Parent = row,
@@ -1567,9 +1699,25 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 	addStroke(optionsFrame, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
 	addList(optionsFrame, 0)
 
+	local optionButtons: { TextButton } = {}
+	local function paintOption(optionButton: TextButton, hovering: boolean)
+		local isSelected = optionButton.Text == selected
+		optionButton.BackgroundColor3 = if isSelected or hovering
+			then (theme.ButtonHover or DEFAULT_THEME.ButtonHover)
+			else (theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong)
+		optionButton.TextColor3 = if isSelected
+			then (theme.Text or DEFAULT_THEME.Text)
+			else (theme.MutedText or DEFAULT_THEME.MutedText)
+	end
+
 	local function renderOpen()
 		optionsFrame.Visible = open
-		row.Size = if open then UDim2.new(1, 0, 0, 74 + (#options * 30)) else UDim2.new(1, 0, 0, 64)
+		arrow.Text = if open then "^" else "v"
+		row.Size = if open then UDim2.new(1, 0, 0, 74 + (#options * 28)) else UDim2.new(1, 0, 0, 64)
+
+		for _, optionButton in ipairs(optionButtons) do
+			paintOption(optionButton, false)
+		end
 	end
 
 	for _, option in ipairs(options) do
@@ -1578,23 +1726,23 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 			AutoButtonColor = false,
 			BackgroundColor3 = theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong,
 			BorderSizePixel = 0,
-			Size = UDim2.new(1, 0, 0, 30),
+			Size = UDim2.new(1, 0, 0, 28),
 			Text = option,
-			TextColor3 = theme.Text or DEFAULT_THEME.Text,
-			TextSize = 12,
-			Font = Enum.Font.Gotham,
+			TextColor3 = theme.MutedText or DEFAULT_THEME.MutedText,
+			TextSize = 11,
+			Font = Enum.Font.GothamMedium,
 			ZIndex = 8,
 			Parent = optionsFrame,
 		}) :: TextButton
 		optionButton.TextXAlignment = Enum.TextXAlignment.Left
 		addPadding(optionButton, 10, 0, 10, 0)
-		bindButtonMotion(
-			self._library,
-			optionButton,
-			theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong,
-			theme.ButtonHover or DEFAULT_THEME.ButtonHover,
-			theme.Button or DEFAULT_THEME.Button
-		)
+		table.insert(optionButtons, optionButton)
+		self:_track(optionButton.MouseEnter:Connect(function()
+			paintOption(optionButton, true)
+		end))
+		self:_track(optionButton.MouseLeave:Connect(function()
+			paintOption(optionButton, false)
+		end))
 
 		self:_track(optionButton.MouseButton1Click:Connect(function()
 			selected = option

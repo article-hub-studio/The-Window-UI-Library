@@ -10,16 +10,18 @@ local PLACEHOLDER_ICON = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 local ui = WindowUI.new({
 	Name = "ExecutorFloatWindow",
 	Title = "Window UI",
+	Scale = 0.94,
 	StartOpen = true,
 	TopbarPlus = {
 		Align = "Left",
+		Label = "⊞",
 		Caption = "Toggle Window UI",
 	},
 	Theme = {
-		Accent = Color3.fromRGB(47, 119, 255),
-		Window = Color3.fromRGB(18, 20, 28),
-		Topbar = Color3.fromRGB(0, 0, 0),
-		Surface = Color3.fromRGB(29, 33, 44),
+		Accent = Color3.fromRGB(94, 151, 255),
+		Window = Color3.fromRGB(24, 27, 36),
+		Topbar = Color3.fromRGB(18, 20, 28),
+		Surface = Color3.fromRGB(31, 35, 46),
 		SurfaceStrong = Color3.fromRGB(42, 47, 61),
 	},
 })
@@ -34,7 +36,7 @@ local home = ui:CreateApp({
 })
 
 local settings = home:CreateSection("Settings")
-home:AddLabel("Single floating window. App buttons switch this same window to another page.", settings)
+home:AddLabel("Executor-only floating UI. App tiles switch this same window to another page.", settings)
 home:AddToggle({
 	Text = "Example toggle",
 	Default = true,

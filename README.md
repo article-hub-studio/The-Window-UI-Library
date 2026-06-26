@@ -1,15 +1,19 @@
 # The Window UI Library
 
-Roblox Luau UI library kiểu floating window cho executor-style LocalScript. Bản này chỉ là UI:
+Roblox Luau UI library kiểu floating window cho executor LocalScript. Bản này chỉ là UI:
 
-- Một float window đơn giản, không dùng `UICorner`.
-- Topbar có title và nút `-`; bấm `-` sẽ hide window.
+- Executor-only: service được lấy qua `cloneref` nếu executor hỗ trợ.
+- Ưu tiên parent GUI bằng `gethui()`, fallback `CoreGui`, và gọi `protectgui`/`syn.protect_gui` nếu có.
+- Một float window đơn giản, không dùng `UICorner`, DPI gọn hơn qua `Scale`.
+- Topbar có title và nút `-`; bấm `-` sẽ hide window. Khi window hide, nút TopbarPlus/fallback hiện; bấm nút đó thì window hiện lại và nút tự ẩn.
 - App ở màn hình chính là tile kiểu Windows: icon ở trên, tên app ở dưới, có thể dùng image background.
+- Giữ app tile sẽ hiện stroke gradient highlight và zoom `1.09`.
 - Bấm app sẽ đổi cùng float window sang page của app đó, không mở thêm window riêng.
 - Có nút back để quay lại app grid.
 - Kéo topbar để di chuyển window, tự co layout cho mobile.
 - Tự dùng `UIShadow` nếu client hỗ trợ shadow mới của Roblox.
-- Tự tạo nút TopbarPlus theo docs của `tanhoangviet/ToolForLua`; nếu môi trường không hỗ trợ `loadstring/HttpGet`, library sẽ vẽ fallback icon Windows nền đen, icon trắng.
+- Tự tạo nút TopbarPlus theo docs của `tanhoangviet/ToolForLua`, nhưng không gọi `modifyTheme` để giữ theme TopbarPlus nguyên bản.
+- Nếu môi trường không hỗ trợ `loadstring/HttpGet` hoặc bạn tắt TopbarPlus, library sẽ vẽ fallback icon Windows nền đen, icon trắng.
 
 Library không chứa executor, injection, remote exploit, bypass, hoặc logic can thiệp game.
 
@@ -30,9 +34,11 @@ local WindowUI = require(ReplicatedStorage:WaitForChild("WindowUILibrary"))
 local ui = WindowUI.new({
 	Name = "MyWindowUI",
 	Title = "Window UI",
+	Scale = 0.94,
 	StartOpen = true,
 	TopbarPlus = {
 		Align = "Left",
+		Label = "⊞",
 		Caption = "Toggle Window UI",
 	},
 })
@@ -75,9 +81,9 @@ Config:
 - `TopbarPlus = true` hoặc bỏ trống: auto-load TopbarPlus Extended.
 - `TopbarPlus = false`: không load TopbarPlus, chỉ dùng fallback button trong `ScreenGui`.
 - `TopbarPlus = { Icon = Icon }`: dùng `Icon` class bạn đã load sẵn.
-- `TopbarPlus = { Source = "...", Align = "Left", Caption = "..." }`: đổi source/position/caption.
+- `TopbarPlus = { Source = "...", Align = "Left", Label = "⊞", Caption = "..." }`: đổi source/position/label/caption.
 
-Icon mặc định được vẽ dạng Windows: nền đen, 4 ô trắng. Nếu bạn truyền `Image`, library sẽ dùng image đó thay icon tự vẽ.
+Library không modify theme TopbarPlus. Khi window đang mở, TopbarPlus icon sẽ được `setEnabled(false)`; khi window hide, icon `setEnabled(true)` để làm nút mở lại. Icon fallback mặc định được vẽ dạng Windows: nền đen, 4 ô trắng. Nếu bạn truyền `Image`, TopbarPlus sẽ dùng image đó.
 
 ## API Chính
 
@@ -85,9 +91,10 @@ Icon mặc định được vẽ dạng Windows: nền đen, 4 ô trắng. Nếu
 
 - `Name: string?`
 - `Title: string?`
-- `Parent: Instance?` - mặc định là `Players.LocalPlayer.PlayerGui`.
+- `Parent: Instance?` - mặc định là `gethui()` nếu có, fallback `CoreGui`.
 - `Size: UDim2?`
 - `Position: UDim2?`
+- `Scale: number?` - mặc định `0.94` để UI gọn hơn trên executor.
 - `StartOpen: boolean?`
 - `DisplayOrder: number?`
 - `ResetOnSpawn: boolean?`
