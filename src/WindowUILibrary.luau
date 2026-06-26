@@ -23,6 +23,105 @@ local function getGlobal(name: string): any?
 	return nil
 end
 
+local BASE64_BYTES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local WINDOW_ICON_PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAuklEQVR42u3bsQkAMAhFwb//0mYDOzHCBV4d8KqASZLSaoYAAIAAABAAAAIAQAAACAAAAQAgAAAEAIDOAUyd3+8GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYC/IYpYAAABgCAAACAAA+R/gJQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAIAAABACAAAAQAgAAAEAAAAgBAAAAIAAA1PZlFf771RW3YAAAAAElFTkSuQmCC"
+
+local function decodeBase64(data: string): string
+	local output = table.create(math.floor(#data * 0.75))
+	local buffer = 0
+	local bits = 0
+
+	for index = 1, #data do
+		local char = data:sub(index, index)
+		if char == "=" then
+			break
+		end
+
+		local value = BASE64_BYTES:find(char, 1, true)
+		if value then
+			buffer = (buffer * 64) + (value - 1)
+			bits += 6
+
+			if bits >= 8 then
+				bits -= 8
+				local byte = math.floor(buffer / (2 ^ bits)) % 256
+				table.insert(output, string.char(byte))
+			end
+		end
+	end
+
+	return table.concat(output)
+end
+
+local function sanitizeFileName(value: string): string
+	return value:gsub("[^%w%._%-]", "_")
+end
+
+local function tryMakeFolder(path: string)
+	local makefolder = getGlobal("makefolder")
+	local isfolder = getGlobal("isfolder")
+	if type(makefolder) ~= "function" then
+		return
+	end
+
+	if type(isfolder) == "function" then
+		local ok, exists = pcall(isfolder, path)
+		if ok and exists then
+			return
+		end
+	end
+
+	pcall(makefolder, path)
+end
+
+local function writeExecutorAsset(path: string, content: string): string?
+	local writefile = getGlobal("writefile")
+	local readfile = getGlobal("readfile")
+	local isfile = getGlobal("isfile")
+	local getcustomasset = getGlobal("getcustomasset") or getGlobal("getsynasset")
+
+	if type(writefile) ~= "function" or type(getcustomasset) ~= "function" then
+		return nil
+	end
+
+	tryMakeFolder("WindowUILibrary")
+	tryMakeFolder("WindowUILibrary/icons")
+
+	local shouldWrite = true
+	if type(isfile) == "function" then
+		local ok, exists = pcall(isfile, path)
+		shouldWrite = not (ok and exists)
+	end
+
+	if type(readfile) == "function" then
+		local ok, current = pcall(readfile, path)
+		if ok and current ~= nil and #current > 0 then
+			shouldWrite = false
+		elseif shouldWrite == false then
+			shouldWrite = true
+		end
+	end
+
+	if shouldWrite then
+		local ok = pcall(writefile, path, content)
+		if not ok then
+			return nil
+		end
+	end
+
+	local ok, asset = pcall(getcustomasset, path)
+	if ok and type(asset) == "string" then
+		return asset
+	end
+
+	return nil
+end
+
+local function getWindowIconAsset(): string?
+	return writeExecutorAsset("WindowUILibrary/icons/window_topbar.png", decodeBase64(WINDOW_ICON_PNG_BASE64))
+end
+
 local executorCloneRef = getGlobal("cloneref")
 
 local function cloneRef<T>(instance: T): T
@@ -74,6 +173,14 @@ export type Theme = {
 	Danger: Color3?,
 }
 
+export type IconConfig = string | {
+	Pack: string?,
+	Name: string?,
+	Url: string?,
+	Image: string?,
+	Color: Color3?,
+}
+
 export type TopbarPlusConfig = {
 	Enabled: boolean?,
 	Source: string?,
@@ -103,7 +210,7 @@ export type WindowConfig = {
 
 export type AppConfig = {
 	Name: string,
-	Icon: string?,
+	Icon: IconConfig?,
 	BackgroundImage: string?,
 	TileImage: string?,
 	Order: number?,
@@ -150,25 +257,27 @@ local DEFAULT_TOPBARPLUS_SOURCE =
 	"https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"
 
 local DEFAULT_THEME = {
-	Accent = Color3.fromRGB(94, 151, 255),
-	Window = Color3.fromRGB(24, 27, 36),
-	Topbar = Color3.fromRGB(18, 20, 28),
-	TopbarText = Color3.fromRGB(238, 241, 248),
-	Surface = Color3.fromRGB(31, 35, 46),
-	SurfaceStrong = Color3.fromRGB(42, 47, 61),
-	Tile = Color3.fromRGB(32, 36, 47),
-	TileHover = Color3.fromRGB(48, 54, 70),
-	Button = Color3.fromRGB(38, 43, 56),
-	ButtonHover = Color3.fromRGB(53, 60, 77),
-	Text = Color3.fromRGB(238, 241, 247),
-	MutedText = Color3.fromRGB(165, 173, 190),
-	Stroke = Color3.fromRGB(73, 82, 104),
-	Shadow = Color3.fromRGB(0, 0, 0),
+	Accent = Color3.fromRGB(88, 101, 242),
+	Window = Color3.fromRGB(49, 51, 56),
+	Topbar = Color3.fromRGB(30, 31, 34),
+	TopbarText = Color3.fromRGB(242, 243, 245),
+	Surface = Color3.fromRGB(43, 45, 49),
+	SurfaceStrong = Color3.fromRGB(56, 58, 64),
+	Tile = Color3.fromRGB(43, 45, 49),
+	TileHover = Color3.fromRGB(63, 66, 73),
+	Button = Color3.fromRGB(56, 58, 64),
+	ButtonHover = Color3.fromRGB(72, 75, 83),
+	Text = Color3.fromRGB(242, 243, 245),
+	MutedText = Color3.fromRGB(181, 186, 193),
+	Stroke = Color3.fromRGB(64, 66, 73),
+	Shadow = Color3.fromRGB(18, 19, 22),
 	Danger = Color3.fromRGB(255, 91, 91),
 }
 
-local TWEEN_FAST = TweenInfo.new(0.14, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-local TWEEN_SOFT = TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local TWEEN_FAST = TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local TWEEN_SOFT = TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local TWEEN_WINDOW_IN = TweenInfo.new(0.42, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TWEEN_WINDOW_OUT = TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 
 local function getPlayerGui(): Instance
 	if LOCAL_PLAYER then
@@ -393,21 +502,314 @@ local function drawWindowsGlyph(parent: GuiObject, name: string?)
 	end
 end
 
-local function bindButtonMotion(owner: any, button: GuiButton, normal: Color3, hover: Color3, down: Color3)
+local function colorToHex(color: Color3): string
+	return string.format(
+		"%02X%02X%02X",
+		math.clamp(math.floor(color.R * 255 + 0.5), 0, 255),
+		math.clamp(math.floor(color.G * 255 + 0.5), 0, 255),
+		math.clamp(math.floor(color.B * 255 + 0.5), 0, 255)
+	)
+end
+
+local function trimIconVariant(name: string): string
+	local cleaned = name:lower()
+	cleaned = cleaned:gsub("^solar:", ""):gsub("^craft:", "")
+	cleaned = cleaned:gsub("%-linear$", ""):gsub("%-outline$", ""):gsub("%-broken$", ""):gsub("%-bold$", "")
+	cleaned = cleaned:gsub("%-rounded$", ""):gsub("%-line$", "")
+	return cleaned
+end
+
+local SOLAR_GLYPHS = {
+	settings = "⚙",
+	tools = "✦",
+	tool = "✦",
+	home = "⌂",
+	search = "⌕",
+	folder = "▱",
+	file = "□",
+	terminal = "▸",
+	code = "<>",
+	user = "◌",
+	profile = "◌",
+	shield = "◇",
+	lock = "□",
+	star = "✧",
+	rocket = "△",
+}
+
+local CRAFT_GLYPHS = {
+	settings = "▣",
+	tools = "◆",
+	tool = "◆",
+	home = "⌂",
+	folder = "▰",
+	terminal = "▸",
+	code = "{}",
+	user = "●",
+	profile = "●",
+	shield = "◈",
+	star = "✦",
+}
+
+local function getGlyph(pack: string, name: string): string
+	local cleaned = trimIconVariant(name)
+	local source = if pack == "craft" then CRAFT_GLYPHS else SOLAR_GLYPHS
+
+	for key, glyph in pairs(source) do
+		if cleaned:find(key, 1, true) then
+			return glyph
+		end
+	end
+
+	return if pack == "craft" then "▣" else "✦"
+end
+
+local function iconifyAsset(prefix: string, name: string, color: Color3): string?
+	local httpName = name:gsub("^" .. prefix .. ":", "")
+	local colorHex = colorToHex(color)
+	local url = ("https://api.iconify.design/%s/%s.svg?color=%%23%s&width=96&height=96"):format(
+		prefix,
+		httpName,
+		colorHex
+	)
+
+	local ok, content = pcall(function()
+		return (cloneRef(rawGame) :: any):HttpGet(url)
+	end)
+	if not ok or type(content) ~= "string" or #content == 0 or content:find("<svg", 1, true) == nil then
+		return nil
+	end
+
+	local path = ("WindowUILibrary/icons/%s_%s_%s.svg"):format(prefix, sanitizeFileName(httpName), colorHex)
+	return writeExecutorAsset(path, content)
+end
+
+local function urlAsset(url: string): string?
+	local extension = url:match("%.([%w]+)%??[^/]*$")
+	if extension ~= "png" and extension ~= "jpg" and extension ~= "jpeg" and extension ~= "svg" then
+		extension = "png"
+	end
+
+	local ok, content = pcall(function()
+		return (cloneRef(rawGame) :: any):HttpGet(url)
+	end)
+	if not ok or type(content) ~= "string" or #content == 0 then
+		return nil
+	end
+
+	local path = ("WindowUILibrary/icons/url_%s.%s"):format(sanitizeFileName(url), extension)
+	return writeExecutorAsset(path, content)
+end
+
+local function resolveIcon(spec: any, color: Color3): (string?, string?, string?)
+	if type(spec) == "string" then
+		if spec == "" then
+			return nil, nil, nil
+		end
+
+		if spec:match("^%d+$") then
+			return "rbxassetid://" .. spec, nil, nil
+		end
+
+		if spec:match("^rbxasset") or spec:match("^rbasset") then
+			return spec, nil, nil
+		end
+
+		local pack, name = spec:match("^(%w+):(.+)$")
+		if pack then
+			pack = pack:lower()
+			if pack == "solar" then
+				return iconifyAsset("solar", name, color), pack, name
+			end
+			if pack == "craft" then
+				return nil, pack, name
+			end
+		end
+
+		if spec:match("^https?://") then
+			return urlAsset(spec), nil, nil
+		end
+
+		return spec, nil, nil
+	end
+
+	if type(spec) == "table" then
+		local image = spec.Image
+		if type(image) == "string" and image ~= "" then
+			return image, nil, nil
+		end
+
+		local url = spec.Url
+		if type(url) == "string" and url ~= "" then
+			return urlAsset(url), nil, nil
+		end
+
+		local pack = spec.Pack
+		local name = spec.Name
+		if type(pack) == "string" and type(name) == "string" then
+			pack = pack:lower()
+			if pack == "solar" then
+				return iconifyAsset("solar", name, color), pack, name
+			end
+			if pack == "craft" then
+				return nil, pack, name
+			end
+		end
+	end
+
+	return nil, nil, nil
+end
+
+local function renderGeneratedIcon(
+	parent: GuiObject,
+	pack: string,
+	name: string,
+	size: number,
+	zIndex: number,
+	theme: Theme
+)
+	local shell = create("Frame", {
+		Name = "RenderedIcon",
+		AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundColor3 = if pack == "craft"
+			then (theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong)
+			else Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = if pack == "craft" then 0.04 else 0,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.fromOffset(size, size),
+		ZIndex = zIndex,
+		Parent = parent,
+	}) :: Frame
+	addStroke(shell, theme.Stroke or DEFAULT_THEME.Stroke, if pack == "craft" then 0.56 else 0.7, 1)
+
+	if pack == "craft" then
+		for index, offset in ipairs({
+			Vector2.new(5, 5),
+			Vector2.new(size - 13, 5),
+			Vector2.new(5, size - 13),
+			Vector2.new(size - 13, size - 13),
+		}) do
+			create("Frame", {
+				Name = "CraftBlock" .. index,
+				BackgroundColor3 = theme.Accent or DEFAULT_THEME.Accent,
+				BackgroundTransparency = if index == 1 then 0 else 0.18,
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(offset.X, offset.Y),
+				Size = UDim2.fromOffset(8, 8),
+				ZIndex = zIndex + 1,
+				Parent = shell,
+			})
+		end
+	end
+
+	local glyph = create("TextLabel", {
+		Name = "Glyph",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		Text = getGlyph(pack, name),
+		TextColor3 = theme.Text or DEFAULT_THEME.Text,
+		TextSize = if size <= 30 then 16 else 20,
+		Font = Enum.Font.GothamMedium,
+		ZIndex = zIndex + 2,
+		Parent = shell,
+	}) :: TextLabel
+	glyph.TextXAlignment = Enum.TextXAlignment.Center
+	glyph.TextYAlignment = Enum.TextYAlignment.Center
+end
+
+local function renderIcon(parent: GuiObject, spec: any, size: number, position: UDim2, zIndex: number, theme: Theme)
+	local old = parent:FindFirstChild("RenderedIcon")
+	if old then
+		old:Destroy()
+	end
+
+	local color = theme.Text or DEFAULT_THEME.Text
+	if type(spec) == "table" and typeof(spec.Color) == "Color3" then
+		color = spec.Color
+	end
+
+	local asset, pack, name = resolveIcon(spec, color)
+	if asset then
+		local image = create("ImageLabel", {
+			Name = "RenderedIcon",
+			AnchorPoint = Vector2.new(0.5, 0),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Image = asset,
+			Position = position,
+			ScaleType = Enum.ScaleType.Fit,
+			Size = UDim2.fromOffset(size, size),
+			ZIndex = zIndex,
+			Parent = parent,
+		}) :: ImageLabel
+		image.ImageColor3 = color
+		if pack and name then
+			task.delay(0.45, function()
+				if image.Parent and image.IsLoaded == false then
+					image:Destroy()
+					renderGeneratedIcon(parent, pack, name, size, zIndex, theme)
+					local rendered = parent:FindFirstChild("RenderedIcon")
+					if rendered and rendered:IsA("GuiObject") then
+						rendered.Position = position
+					end
+				end
+			end)
+		end
+		return
+	end
+
+	renderGeneratedIcon(parent, pack or "solar", name or "star", size, zIndex, theme)
+	local rendered = parent:FindFirstChild("RenderedIcon")
+	if rendered and rendered:IsA("GuiObject") then
+		rendered.Position = position
+	end
+end
+
+local function bindButtonMotion(
+	owner: any,
+	button: GuiButton,
+	normal: Color3,
+	hover: Color3,
+	down: Color3,
+	animateScale: boolean?
+)
+	local buttonScale: UIScale? = nil
+	if animateScale ~= false then
+		buttonScale = create("UIScale", {
+			Name = "ButtonMotionScale",
+			Scale = 1,
+			Parent = button,
+		}) :: UIScale
+	end
+
 	owner:_track(button.MouseEnter:Connect(function()
 		tween(button, TWEEN_FAST, { BackgroundColor3 = hover })
+		if buttonScale then
+			tween(buttonScale, TWEEN_FAST, { Scale = 1.015 })
+		end
 	end))
 
 	owner:_track(button.MouseLeave:Connect(function()
 		tween(button, TWEEN_FAST, { BackgroundColor3 = normal })
+		if buttonScale then
+			tween(buttonScale, TWEEN_FAST, { Scale = 1 })
+		end
 	end))
 
 	owner:_track(button.MouseButton1Down:Connect(function()
 		tween(button, TWEEN_FAST, { BackgroundColor3 = down })
+		if buttonScale then
+			tween(buttonScale, TWEEN_FAST, { Scale = 0.965 })
+		end
 	end))
 
 	owner:_track(button.MouseButton1Up:Connect(function()
 		tween(button, TWEEN_FAST, { BackgroundColor3 = hover })
+		if buttonScale then
+			tween(buttonScale, TWEEN_FAST, { Scale = 1.01 })
+		end
 	end))
 end
 
@@ -505,7 +907,7 @@ function WindowUI:_buildRoot()
 	self._baseSize = self.Window.Size
 	self._basePosition = self.Window.Position
 	self.WindowScale = create("UIScale", {
-		Scale = config.Scale or 0.94,
+		Scale = self._windowBaseScale,
 		Parent = self.Window,
 	}) :: UIScale
 
@@ -713,7 +1115,7 @@ function WindowUI:_buildBody()
 		self:OpenHome()
 	end))
 
-	self.AppIcon = create("ImageLabel", {
+	self.AppIcon = create("Frame", {
 		Name = "AppIcon",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -721,7 +1123,7 @@ function WindowUI:_buildBody()
 		Size = UDim2.fromOffset(26, 26),
 		ZIndex = 4,
 		Parent = appHeader,
-	}) :: ImageLabel
+	}) :: Frame
 
 	self.AppTitle = create("TextLabel", {
 		Name = "AppTitle",
@@ -791,14 +1193,20 @@ function WindowUI:_bindResponsiveLayout()
 		local mobile = viewport.X <= 700
 
 		if mobile then
-			self.WindowScale.Scale = 1
+			self._windowBaseScale = 1
+			if self.Window.Visible then
+				self.WindowScale.Scale = self._windowBaseScale
+			end
 			self.Window.Size = UDim2.new(1, -22, 0, math.clamp(viewport.Y - 88, 286, 400))
 			if not self._wasDragged then
 				self.Window.Position = UDim2.fromOffset(12, 56)
 			end
 			self.AppGrid.CellSize = UDim2.fromOffset(76, 80)
 		else
-			self.WindowScale.Scale = self._config.Scale or 0.94
+			self._windowBaseScale = self._config.Scale or 0.94
+			if self.Window.Visible then
+				self.WindowScale.Scale = self._windowBaseScale
+			end
 			self.Window.Size = self._baseSize
 			if not self._wasDragged then
 				self.Window.Position = self._basePosition
@@ -869,10 +1277,16 @@ function WindowUI:_setupTopbarPlus(configValue: boolean | TopbarPlusConfig?)
 			icon:setOrder(config.Order)
 		end)
 	end
-	if config.Image then
+
+	local topbarImage = config.Image
+	if not topbarImage then
+		topbarImage = getWindowIconAsset()
+	end
+
+	if topbarImage then
 		pcall(function()
-			icon:setImage(config.Image)
-			icon:setImageScale(config.ImageScale or 0.72)
+			icon:setImage(topbarImage)
+			icon:setImageScale(config.ImageScale or 0.82)
 			icon:setImageRatio(1)
 		end)
 	end
@@ -953,6 +1367,12 @@ function WindowUI:_syncTopbarIcon(visible: boolean)
 	self._syncingTopbar = false
 end
 
+function WindowUI:_animatePage(page: GuiObject, offsetX: number)
+	page.Position = UDim2.fromOffset(offsetX, 0)
+	page.Visible = true
+	tween(page, TWEEN_SOFT, { Position = UDim2.fromOffset(0, 0) })
+end
+
 function WindowUI.new(config: WindowConfig?)
 	local resolvedConfig = config or {}
 	local self = setmetatable({
@@ -966,6 +1386,8 @@ function WindowUI.new(config: WindowConfig?)
 		_topbarIcon = nil,
 		_syncingTopbar = false,
 		_wasDragged = false,
+		_windowBaseScale = resolvedConfig.Scale or 0.94,
+		_visibleIntent = resolvedConfig.StartOpen ~= false,
 		Title = resolvedConfig.Title or resolvedConfig.Name or "Window UI",
 	}, WindowUI)
 
@@ -983,6 +1405,8 @@ function WindowUI.new(config: WindowConfig?)
 end
 
 function WindowUI:SetVisible(visible: boolean)
+	self._visibleIntent = visible
+
 	if self.Window.Visible == visible then
 		self:_syncTopbarIcon(visible)
 		if self.FallbackButton then
@@ -992,11 +1416,24 @@ function WindowUI:SetVisible(visible: boolean)
 	end
 
 	if visible then
+		if self.FallbackButton then
+			self.FallbackButton.Visible = false
+		end
 		self.Window.Visible = true
-		self.Window.BackgroundTransparency = 1
+		self.WindowScale.Scale = self._windowBaseScale * 0.9
+		self.Window.BackgroundTransparency = 0.18
+		tween(self.WindowScale, TWEEN_WINDOW_IN, { Scale = self._windowBaseScale })
 		tween(self.Window, TWEEN_SOFT, { BackgroundTransparency = 0.03 })
 	else
-		self.Window.Visible = false
+		tween(self.WindowScale, TWEEN_WINDOW_OUT, { Scale = self._windowBaseScale * 0.94 })
+		tween(self.Window, TWEEN_WINDOW_OUT, { BackgroundTransparency = 0.18 })
+		task.delay(TWEEN_WINDOW_OUT.Time, function()
+			if self._visibleIntent == false then
+				self.Window.Visible = false
+				self.WindowScale.Scale = self._windowBaseScale
+				self.Window.BackgroundTransparency = 0.03
+			end
+		end)
 	end
 
 	self:_syncTopbarIcon(visible)
@@ -1017,7 +1454,7 @@ function WindowUI:OpenHome()
 	self._activeApp = nil
 	self._activeContent = nil
 	self.AppPage.Visible = false
-	self.HomePage.Visible = true
+	self:_animatePage(self.HomePage, -18)
 	self.ContentScroll.CanvasPosition = Vector2.zero
 end
 
@@ -1036,15 +1473,15 @@ function WindowUI:OpenApp(appName: string)
 	self._activeContent = app.Content
 	self._activeContent.Parent = self.ContentScroll
 	self.AppTitle.Text = app.Name
-	self.AppIcon.Image = app.Icon or ""
-	self.AppIcon.Visible = app.Icon ~= nil and app.Icon ~= ""
+	self.AppIcon.Visible = true
+	renderIcon(self.AppIcon, app.Icon or "solar:star-linear", 26, UDim2.new(0.5, 0, 0, 0), 4, self._theme)
 
 	local backgroundImage = app.BackgroundImage
 	self.AppBackground.Image = backgroundImage or ""
 	self.AppBackground.Visible = backgroundImage ~= nil and backgroundImage ~= ""
 
 	self.HomePage.Visible = false
-	self.AppPage.Visible = true
+	self:_animatePage(self.AppPage, 18)
 	self.ContentScroll.CanvasPosition = Vector2.zero
 	self:SetVisible(true)
 end
@@ -1158,7 +1595,8 @@ function App:_createTile()
 		tile,
 		theme.Tile or DEFAULT_THEME.Tile,
 		theme.TileHover or DEFAULT_THEME.TileHover,
-		theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
+		theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong,
+		false
 	)
 
 	local holding = false
@@ -1168,7 +1606,7 @@ function App:_createTile()
 		end
 
 		holding = nextHolding
-		tween(tileScale, TWEEN_FAST, { Scale = if holding then 1.09 else 1 })
+		tween(tileScale, TWEEN_FAST, { Scale = if holding then 0.94 else 1 })
 		tween(tileStroke, TWEEN_FAST, {
 			Transparency = if holding then 0.06 else 0.62,
 			Thickness = if holding then 2 else 1,
@@ -1214,32 +1652,7 @@ function App:_createTile()
 		})
 	end
 
-	if self.Icon and self.Icon ~= "" then
-		create("ImageLabel", {
-			Name = "Icon",
-			AnchorPoint = Vector2.new(0.5, 0),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Image = self.Icon,
-			Position = UDim2.new(0.5, 0, 0, 10),
-			ScaleType = Enum.ScaleType.Fit,
-			Size = UDim2.fromOffset(30, 30),
-			ZIndex = 5,
-			Parent = tile,
-		})
-	else
-		local iconBox = create("Frame", {
-			Name = "GeneratedIcon",
-			AnchorPoint = Vector2.new(0.5, 0),
-			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-			BorderSizePixel = 0,
-			Position = UDim2.new(0.5, 0, 0, 10),
-			Size = UDim2.fromOffset(30, 30),
-			ZIndex = 5,
-			Parent = tile,
-		}) :: Frame
-		drawWindowsGlyph(iconBox, "AppGlyph")
-	end
+	renderIcon(tile, self.Icon or "solar:star-linear", 30, UDim2.new(0.5, 0, 0, 10), 5, theme)
 
 	local label = create("TextLabel", {
 		Name = "Name",

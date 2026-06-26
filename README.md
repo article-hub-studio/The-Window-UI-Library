@@ -4,13 +4,16 @@ Roblox Luau UI library kiểu floating window cho executor LocalScript. Bản n�
 
 - Executor-only: service được lấy qua `cloneref` nếu executor hỗ trợ.
 - Ưu tiên parent GUI bằng `gethui()`, fallback `CoreGui`, và gọi `protectgui`/`syn.protect_gui` nếu có.
-- Một float window đơn giản, không dùng `UICorner`, DPI gọn hơn qua `Scale`.
+- Theme mặc định kiểu Discord dark, một float window đơn giản, không dùng `UICorner`, DPI gọn hơn qua `Scale`.
 - Topbar có title và nút `-`; bấm `-` sẽ hide window. Khi window hide, nút TopbarPlus/fallback hiện; bấm nút đó thì window hiện lại và nút tự ẩn.
 - App ở màn hình chính là tile kiểu Windows: icon ở trên, tên app ở dưới, có thể dùng image background.
-- Giữ app tile sẽ hiện stroke gradient highlight và zoom `1.09`.
+- Giữ app tile sẽ shrink nhẹ và hiện stroke gradient highlight.
 - Bấm app sẽ đổi cùng float window sang page của app đó, không mở thêm window riêng.
+- Window show/hide và đổi page có animation chắc hơn bằng scale/slide tween.
 - Có nút back để quay lại app grid.
 - Kéo topbar để di chuyển window, tự co layout cho mobile.
+- Hỗ trợ icon dạng `solar:<name>`, `craft:<name>`, URL ảnh, `rbxassetid://...`.
+- Nếu executor có `writefile`, `readfile`, `getcustomasset`, library sẽ cache icon Windows topbar và icon URL/Iconify về file local.
 - Tự dùng `UIShadow` nếu client hỗ trợ shadow mới của Roblox.
 - Tự tạo nút TopbarPlus theo docs của `tanhoangviet/ToolForLua`, nhưng không gọi `modifyTheme` để giữ theme TopbarPlus nguyên bản.
 - Nếu môi trường không hỗ trợ `loadstring/HttpGet` hoặc bạn tắt TopbarPlus, library sẽ vẽ fallback icon Windows nền đen, icon trắng.
@@ -44,7 +47,7 @@ local ui = WindowUI.new({
 
 local app = ui:CreateApp({
 	Name = "Settings",
-	Icon = "rbxassetid://YOUR_ICON_ID",
+	Icon = "solar:settings-linear",
 	BackgroundImage = "rbxassetid://YOUR_BACKGROUND_ID",
 	TileImage = "rbxassetid://YOUR_TILE_BACKGROUND_ID",
 	StartOpen = true,
@@ -103,11 +106,22 @@ Library không modify theme TopbarPlus. Khi window đang mở, TopbarPlus icon s
 ### `ui:CreateApp(config)`
 
 - `Name: string`
-- `Icon: string?`
+- `Icon: string | table?`
 - `BackgroundImage: string?`
 - `TileImage: string?`
 - `Order: number?`
 - `StartOpen: boolean?`
+
+Icon formats:
+
+```lua
+Icon = "rbxassetid://123456"
+Icon = "solar:settings-linear"
+Icon = "craft:tools"
+Icon = "https://example.com/icon.png"
+Icon = { Pack = "Solar", Name = "user-rounded-linear" }
+Icon = { Pack = "Craft", Name = "shield" }
+```
 
 ### App Controls
 

@@ -7,7 +7,6 @@ local WindowUI = loadstring(
 )()
 
 local PLACEHOLDER_IMAGE = "rbxassetid://0"
-local PLACEHOLDER_ICON = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 
 local ui = WindowUI.new({
 	Name = "ExecutorFloatWindow",
@@ -20,17 +19,17 @@ local ui = WindowUI.new({
 		Caption = "Toggle Window UI",
 	},
 	Theme = {
-		Accent = Color3.fromRGB(94, 151, 255),
-		Window = Color3.fromRGB(24, 27, 36),
-		Topbar = Color3.fromRGB(18, 20, 28),
-		Surface = Color3.fromRGB(31, 35, 46),
-		SurfaceStrong = Color3.fromRGB(42, 47, 61),
+		Accent = Color3.fromRGB(88, 101, 242),
+		Window = Color3.fromRGB(49, 51, 56),
+		Topbar = Color3.fromRGB(30, 31, 34),
+		Surface = Color3.fromRGB(43, 45, 49),
+		SurfaceStrong = Color3.fromRGB(56, 58, 64),
 	},
 })
 
 local home = ui:CreateApp({
 	Name = "Settings",
-	Icon = PLACEHOLDER_ICON,
+	Icon = "solar:settings-linear",
 	BackgroundImage = PLACEHOLDER_IMAGE,
 	TileImage = PLACEHOLDER_IMAGE,
 	StartOpen = true,
@@ -59,7 +58,7 @@ home:AddSlider({
 
 local tools = ui:CreateApp({
 	Name = "Tools",
-	Icon = PLACEHOLDER_ICON,
+	Icon = "craft:tools",
 	BackgroundImage = PLACEHOLDER_IMAGE,
 	TileImage = PLACEHOLDER_IMAGE,
 	Order = 2,
@@ -83,7 +82,7 @@ tools:AddDropdown({
 
 local profile = ui:CreateApp({
 	Name = "Profile",
-	Icon = PLACEHOLDER_ICON,
+	Icon = "solar:user-rounded-linear",
 	Order = 3,
 })
 
