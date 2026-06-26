@@ -19,17 +19,16 @@ Library không chứa executor, injection, remote exploit, bypass, hoặc logic 
 
 ## Cài Đặt
 
-1. Tạo `ModuleScript` trong `ReplicatedStorage` tên `WindowUILibrary`.
-2. Dán nội dung [src/WindowUILibrary.luau](src/WindowUILibrary.luau) vào ModuleScript đó.
-3. Tạo `LocalScript` trong `StarterPlayerScripts`.
-4. Dán nội dung [examples/demo.client.luau](examples/demo.client.luau) vào LocalScript để chạy demo.
-5. Thay `rbxassetid://0` bằng image asset id thật nếu muốn background riêng cho app.
+1. Dùng executor chạy [examples/demo.client.luau](examples/demo.client.luau).
+2. Example sẽ tự load library từ raw GitHub bằng `loadstring(game:HttpGet(...))()`.
+3. Thay `rbxassetid://0` bằng image asset id thật nếu muốn background riêng cho app.
 
 ## Ví Dụ Nhanh
 
 ```lua
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local WindowUI = require(ReplicatedStorage:WaitForChild("WindowUILibrary"))
+local WindowUI = loadstring(game:HttpGet(
+	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/src/WindowUILibrary.luau"
+))()
 
 local ui = WindowUI.new({
 	Name = "MyWindowUI",

@@ -1,8 +1,10 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local WindowUI = require(ReplicatedStorage:WaitForChild("WindowUILibrary"))
+local WindowUI = loadstring(
+	game:HttpGet(
+		"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/src/WindowUILibrary.luau"
+	)
+)()
 
 local PLACEHOLDER_IMAGE = "rbxassetid://0"
 local PLACEHOLDER_ICON = "rbxasset://textures/ui/GuiImagePlaceholder.png"
