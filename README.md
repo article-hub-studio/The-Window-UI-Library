@@ -1,23 +1,25 @@
 # The Window UI Library
 
-Roblox Luau UI library mô phỏng giao diện Windows 11 / Seelen UI:
+Roblox Luau UI library kiểu floating window cho executor-style LocalScript. Bản này chỉ là UI:
 
-- Desktop full-screen với wallpaper image tuỳ chỉnh.
-- Start menu dạng floating window có topbar, nút `-` và `x`.
-- App tab là tile kiểu Windows 11: icon ở trên, tên app ở dưới, tile background bằng image.
-- Bấm app tile sẽ mở app window riêng.
-- App window có topbar, icon, nút minimize, nút close, kéo để di chuyển và kéo góc dưới phải để resize.
-- Có taskbar cong ở dưới để mở lại app.
-- Tự đổi layout cho mobile hoặc màn hình nhỏ.
-- Control cơ bản trong app: section, label, button, toggle, slider, textbox, dropdown.
+- Một float window đơn giản, không dùng `UICorner`.
+- Topbar có title và nút `-`; bấm `-` sẽ hide window.
+- App ở màn hình chính là tile kiểu Windows: icon ở trên, tên app ở dưới, có thể dùng image background.
+- Bấm app sẽ đổi cùng float window sang page của app đó, không mở thêm window riêng.
+- Có nút back để quay lại app grid.
+- Kéo topbar để di chuyển window, tự co layout cho mobile.
+- Tự dùng `UIShadow` nếu client hỗ trợ shadow mới của Roblox.
+- Tự tạo nút TopbarPlus theo docs của `tanhoangviet/ToolForLua`; nếu môi trường không hỗ trợ `loadstring/HttpGet`, library sẽ vẽ fallback icon Windows nền đen, icon trắng.
+
+Library không chứa executor, injection, remote exploit, bypass, hoặc logic can thiệp game.
 
 ## Cài Đặt
 
-1. Tạo một `ModuleScript` trong `ReplicatedStorage` tên `WindowUILibrary`.
-2. Dán nội dung file [src/WindowUILibrary.luau](src/WindowUILibrary.luau) vào ModuleScript đó.
-3. Tạo một `LocalScript` trong `StarterPlayerScripts`.
+1. Tạo `ModuleScript` trong `ReplicatedStorage` tên `WindowUILibrary`.
+2. Dán nội dung [src/WindowUILibrary.luau](src/WindowUILibrary.luau) vào ModuleScript đó.
+3. Tạo `LocalScript` trong `StarterPlayerScripts`.
 4. Dán nội dung [examples/demo.client.luau](examples/demo.client.luau) vào LocalScript để chạy demo.
-5. Thay `rbxassetid://0` bằng asset id image thật của bạn.
+5. Thay `rbxassetid://0` bằng image asset id thật nếu muốn background riêng cho app.
 
 ## Ví Dụ Nhanh
 
@@ -26,66 +28,80 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WindowUI = require(ReplicatedStorage:WaitForChild("WindowUILibrary"))
 
 local ui = WindowUI.new({
-	Name = "MyWindowsUI",
-	WallpaperImage = "rbxassetid://YOUR_WALLPAPER_ID",
+	Name = "MyWindowUI",
+	Title = "Window UI",
 	StartOpen = true,
+	TopbarPlus = {
+		Align = "Left",
+		Caption = "Toggle Window UI",
+	},
 })
 
 local app = ui:CreateApp({
 	Name = "Settings",
 	Icon = "rbxassetid://YOUR_ICON_ID",
-	BackgroundImage = "rbxassetid://YOUR_APP_BACKGROUND_ID",
+	BackgroundImage = "rbxassetid://YOUR_BACKGROUND_ID",
 	TileImage = "rbxassetid://YOUR_TILE_BACKGROUND_ID",
-	Size = UDim2.fromOffset(560, 390),
 	StartOpen = true,
 })
 
-local main = app:CreateSection("Main")
+local section = app:CreateSection("Main")
 app:AddToggle({
 	Text = "Enable feature",
 	Default = true,
 	Callback = function(enabled)
 		print(enabled)
 	end,
-}, main)
+}, section)
 
 app:AddButton({
 	Text = "Run action",
 	Callback = function()
 		print("Clicked")
 	end,
-}, main)
+}, section)
 ```
+
+## TopbarPlus
+
+Mặc định `WindowUI.new()` sẽ thử load TopbarPlus Extended theo docs:
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"))()
+```
+
+Config:
+
+- `TopbarPlus = true` hoặc bỏ trống: auto-load TopbarPlus Extended.
+- `TopbarPlus = false`: không load TopbarPlus, chỉ dùng fallback button trong `ScreenGui`.
+- `TopbarPlus = { Icon = Icon }`: dùng `Icon` class bạn đã load sẵn.
+- `TopbarPlus = { Source = "...", Align = "Left", Caption = "..." }`: đổi source/position/caption.
+
+Icon mặc định được vẽ dạng Windows: nền đen, 4 ô trắng. Nếu bạn truyền `Image`, library sẽ dùng image đó thay icon tự vẽ.
 
 ## API Chính
 
 ### `WindowUI.new(config)`
 
-`config`:
-
 - `Name: string?`
+- `Title: string?`
 - `Parent: Instance?` - mặc định là `Players.LocalPlayer.PlayerGui`.
-- `WallpaperImage: string?`
-- `WallpaperTransparency: number?`
+- `Size: UDim2?`
+- `Position: UDim2?`
 - `StartOpen: boolean?`
 - `DisplayOrder: number?`
 - `ResetOnSpawn: boolean?`
-- `Theme: Theme?`
+- `TopbarPlus: boolean | table?`
+- `Theme: table?`
 
 ### `ui:CreateApp(config)`
 
-`config`:
-
 - `Name: string`
-- `Icon: string` - bắt buộc.
-- `BackgroundImage: string` - bắt buộc, dùng cho window background nếu không truyền `WindowImage`.
-- `TileImage: string?` - background riêng cho app tile.
-- `WindowImage: string?` - background riêng cho app window.
-- `Size: UDim2?`
-- `Position: UDim2?`
-- `MinSize: Vector2?`
-- `StartOpen: boolean?`
+- `Icon: string?`
+- `BackgroundImage: string?`
+- `TileImage: string?`
 - `Order: number?`
+- `StartOpen: boolean?`
 
 ### App Controls
 
@@ -99,13 +115,6 @@ app:AddTextBox({ Text = "Input", Placeholder = "Type here", Callback = function(
 app:AddDropdown({ Text = "Mode", Options = { "A", "B" }, Default = "A", Callback = function(value) end }, section)
 ```
 
-## Ghi Chú Thiết Kế
+## Notes
 
-Library này chỉ tạo UI trong Roblox. Nó không chứa executor, injection, remote exploit, hoặc logic liên quan tới bypass game.
-
-Để giống ảnh tham khảo hơn, hãy dùng:
-
-- Wallpaper 16:9 hoặc 21:9 cho `WallpaperImage`.
-- Icon vuông PNG có nền trong suốt cho `Icon`.
-- Background tile sáng, gradient hoặc screenshot-style cho `TileImage`.
-- Background riêng cho từng app nếu muốn mỗi window có chủ đề khác nhau.
+Roblox `UIShadow` mới render shadow dưới parent UI instance và có các property như `BlurRadius`, `Color`, `Offset`, `Spread`, `Transparency`. Library dùng `pcall` khi tạo `UIShadow` để vẫn chạy được trên client chưa có capability này.
