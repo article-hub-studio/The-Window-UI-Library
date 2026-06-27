@@ -26,6 +26,8 @@ end
 local BASE64_BYTES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 local WINDOW_ICON_PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAuklEQVR42u3bsQkAMAhFwb//0mYDOzHCBV4d8KqASZLSaoYAAIAAABAAAAIAQAAACAAAAQAgAAAEAIDOAUyd3+8GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYC/IYpYAAABgCAAACAAA+R/gJQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAIAAABACAAAAQAgAAAEAAAAgBAAAAIAAA1PZlFf771RW3YAAAAAElFTkSuQmCC"
+local BACK_ICON_PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAAsTAAALEwEAmpwYAAACUElEQVR4nO3cOYsUQRjG8RVR8Qg0ERMPDESMRAwVU0X9IuInMRNzwVhBEANFMF3WTDTygkXWZT22u556q2cR5BWHFjz2mKNnqpj9/2Dy5vnD7OxMd83NAQAAAAAAAAAAAAAwA+qYbkq2GGRrUnpS172Tua9p21BMtxST//2yhdzXNfPcfYdkt/8fP3mQ/ch9fTOtHf/OeuP/fuW+xpnl7jsV093NxifAhPTHV7q31fgEmAB33xWiPRhkfAJ0zN13h2gPBx2fAB1y971SejrM+AToyJL7vqD0bNjxCdCBlRU/EJSejzI+AcZUVdVBRZsfdXwCjKGu60OSvRhnfAKMKMZ4OCi9HHd8AozAzI4EpdddjE+AIa02zTFFe9vV+AQYwmrTHFe0912OT4ABhbB2Ksg+dj0+AQYg6XSQLU1ifAJswczOhpg+T2p8AmyiMjunmL5OcnwCbKBO6bxi+jbp8QmwDqm5qJg0jfEJ8A+puaRocVrjE+APwexKkDXTHJ8ArRDsWpD1pj0+Afrjp+tB9j3H+ATov+/bYq7xCUCA/HgLKkAIdpU/wpnVZpf5GJoZ/4gVQGouKKZAgIz4Mq4Av76ODjF9IUBGks4EpU8EyIifJAvAj/IFaG9LeUeAjJqmOapobwiQUXtr4isCZMTNuQXo354ebYEAGfGARgGWl30/jyhlxkN6BXD3PYr2iAAZ8aB2AdqjCu4TICMO6ygAx9UUgAObCsCRZYXY4NC++dzXta1I6YaifWhvfXlcVb0Tua8JAAAAAAAAAAAAADC7fgJYTBn/prTmhQAAAABJRU5ErkJggg=="
 
 local function decodeBase64(data: string): string
 	local output = table.create(math.floor(#data * 0.75))
@@ -130,6 +132,10 @@ end
 
 local function getWindowIconAsset(): string?
 	return writeExecutorAsset("WindowUILibrary/icons/window_topbar.png", decodeBase64(WINDOW_ICON_PNG_BASE64))
+end
+
+local function getBackIconAsset(): string?
+	return writeExecutorAsset("WindowUILibrary/icons/solar_back_arrow_left.png", decodeBase64(BACK_ICON_PNG_BASE64))
 end
 
 local executorCloneRef = getGlobal("cloneref")
@@ -267,8 +273,6 @@ local DEFAULT_TOPBARPLUS_SOURCE =
 	"https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"
 local DEFAULT_BACKGROUND_URL =
 	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/dark-stripe-background.jpg"
-local DEFAULT_PAGE_BACKGROUND_URL =
-	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/page-layer-background.jpg"
 
 local DEFAULT_THEME = {
 	Accent = Color3.fromRGB(88, 101, 242),
@@ -717,8 +721,6 @@ end
 
 local cachedDefaultBackground: string? = nil
 local triedDefaultBackground = false
-local cachedPageBackground: string? = nil
-local triedPageBackground = false
 
 local function getDefaultBackgroundAsset(): string?
 	if triedDefaultBackground then
@@ -735,14 +737,7 @@ function WindowUI.GetDefaultBackground(): string?
 end
 
 local function getPageBackgroundAsset(): string?
-	if triedPageBackground then
-		return cachedPageBackground
-	end
-
-	triedPageBackground = true
-	cachedPageBackground =
-		urlAsset(DEFAULT_PAGE_BACKGROUND_URL, "WindowUILibrary/backgrounds/page_layer_background.jpg")
-	return cachedPageBackground
+	return getDefaultBackgroundAsset()
 end
 
 function WindowUI.GetPageBackground(): string?
@@ -979,6 +974,78 @@ local function renderIcon(parent: GuiObject, spec: any, size: number, position: 
 			rendered.Position = position
 		end
 	end
+end
+
+local function drawBackFallbackIcon(parent: GuiObject, color: Color3, zIndex: number)
+	local old = parent:FindFirstChild("BackIcon")
+	if old then
+		old:Destroy()
+	end
+
+	local glyph = create("Frame", {
+		Name = "BackIcon",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(18, 18),
+		ZIndex = zIndex,
+		Parent = parent,
+	}) :: Frame
+
+	for index, rotation in ipairs({ -42, 42 }) do
+		local arm = create("Frame", {
+			Name = "Arm" .. index,
+			AnchorPoint = Vector2.new(0, 0.5),
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(5, if index == 1 then 9 else 8),
+			Rotation = rotation,
+			Size = UDim2.fromOffset(11, 2),
+			ZIndex = zIndex + 1,
+			Parent = glyph,
+		}) :: Frame
+		addCorner(arm, UDim.new(1, 0))
+	end
+end
+
+local function renderBackIcon(parent: GuiObject, theme: Theme)
+	local oldRendered = parent:FindFirstChild("RenderedIcon")
+	if oldRendered then
+		oldRendered:Destroy()
+	end
+	local oldBack = parent:FindFirstChild("BackIcon")
+	if oldBack then
+		oldBack:Destroy()
+	end
+
+	local color = theme.Text or DEFAULT_THEME.Text
+	local asset = getBackIconAsset() or iconifyAsset("solar", "alt-arrow-left-bold", color)
+	if not asset then
+		drawBackFallbackIcon(parent, color, (parent.ZIndex or 1) + 2)
+		return
+	end
+
+	local image = create("ImageLabel", {
+		Name = "BackIcon",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = asset,
+		ImageColor3 = color,
+		Position = UDim2.fromScale(0.5, 0.5),
+		ScaleType = Enum.ScaleType.Fit,
+		Size = UDim2.fromOffset(18, 18),
+		ZIndex = (parent.ZIndex or 1) + 2,
+		Parent = parent,
+	}) :: ImageLabel
+
+	task.delay(0.45, function()
+		if image.Parent and image.IsLoaded == false then
+			image:Destroy()
+			drawBackFallbackIcon(parent, color, (parent.ZIndex or 1) + 2)
+		end
+	end)
 end
 
 local function bindButtonMotion(
@@ -1398,24 +1465,14 @@ function WindowUI:_buildBody()
 		Name = "Back",
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
-		BackgroundTransparency = 0.02,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.fromOffset(36, 32),
+		Size = UDim2.fromOffset(34, 32),
 		Text = "",
 		ZIndex = 5,
 		Parent = appHeader,
 	}) :: TextButton
-	addCorner(self.BackButton, UDim.new(0, 10))
-	addStroke(self.BackButton, theme.Stroke or DEFAULT_THEME.Stroke, 0.44, 1)
-	create("UIGradient", {
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, theme.ButtonHover or DEFAULT_THEME.ButtonHover),
-			ColorSequenceKeypoint.new(1, theme.Button or DEFAULT_THEME.Button),
-		}),
-		Rotation = 90,
-		Parent = self.BackButton,
-	})
-	renderIcon(self.BackButton, "solar:alt-arrow-left-bold", 18, UDim2.new(0.5, 0, 0, 7), 6, theme)
+	renderBackIcon(self.BackButton, theme)
 	bindButtonMotion(
 		self,
 		self.BackButton,
@@ -1732,7 +1789,7 @@ function WindowUI:_refreshThemeVisuals()
 	end
 	if self.BackButton then
 		self.BackButton.BackgroundColor3 = theme.Button or DEFAULT_THEME.Button
-		renderIcon(self.BackButton, "solar:alt-arrow-left-bold", 18, UDim2.new(0.5, 0, 0, 7), 6, theme)
+		renderBackIcon(self.BackButton, theme)
 	end
 
 	for _, descendant in ipairs(self.Window:GetDescendants()) do
@@ -1800,18 +1857,20 @@ function WindowUI:SetScale(scale: number)
 	end
 end
 
-function WindowUI:_getCollapsedTopbarPosition(): UDim2
+function WindowUI:_getCollapsedTopbarPosition(visualWidth: number?, topOffset: number?): UDim2
 	local viewport = getViewport()
 	local align = tostring(self._topbarAlign or "Center"):lower()
+	local width = visualWidth or 44
+	local y = topOffset or 9
 
 	if align == "left" then
-		return UDim2.fromOffset(12, 9)
+		return UDim2.fromOffset(12, y)
 	end
 	if align == "right" then
-		return UDim2.fromOffset(math.max(12, viewport.X - 56), 9)
+		return UDim2.fromOffset(math.max(12, viewport.X - width - 12), y)
 	end
 
-	return UDim2.fromOffset(math.max(12, (viewport.X - 44) / 2), 9)
+	return UDim2.fromOffset(math.max(12, (viewport.X - width) / 2), y)
 end
 
 function WindowUI:_buildSystemPages()
@@ -1946,10 +2005,11 @@ function WindowUI:SetVisible(visible: boolean)
 
 		local restoreSize = self._windowRestoreSize or self._baseSize
 		local restorePosition = self._windowRestorePosition or self._basePosition
+		local openingScale = self._windowBaseScale * 0.78
 		self.Window.Size = UDim2.fromOffset(44, 36)
-		self.Window.Position = self:_getCollapsedTopbarPosition()
+		self.Window.Position = self:_getCollapsedTopbarPosition(44 * openingScale, 9)
 		self.Window.Visible = true
-		self.WindowScale.Scale = self._windowBaseScale * 0.78
+		self.WindowScale.Scale = openingScale
 		self.Window.BackgroundTransparency = 0.16
 		if self.Body then
 			self.Body.Visible = false
@@ -1995,10 +2055,11 @@ function WindowUI:SetVisible(visible: boolean)
 		end
 		task.delay(collapseDelay, function()
 			if self._visibleIntent == false then
-				tween(self.WindowScale, TWEEN_WINDOW_OUT, { Scale = self._windowBaseScale * 0.74 })
+				local collapsedScale = self._windowBaseScale * 0.74
+				tween(self.WindowScale, TWEEN_WINDOW_OUT, { Scale = collapsedScale })
 				tween(self.Window, TWEEN_WINDOW_OUT, {
 					BackgroundTransparency = 0.16,
-					Position = self:_getCollapsedTopbarPosition(),
+					Position = self:_getCollapsedTopbarPosition(44 * collapsedScale, 9),
 					Size = UDim2.fromOffset(44, 36),
 				})
 			end

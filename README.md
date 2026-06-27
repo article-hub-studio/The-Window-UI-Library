@@ -4,17 +4,16 @@ Roblox Luau UI library kiểu floating window cho executor LocalScript. Bản n�
 
 - Executor-only: service được lấy qua `cloneref` nếu executor hỗ trợ.
 - Ưu tiên parent GUI bằng `gethui()`, fallback `CoreGui`, và gọi `protectgui`/`syn.protect_gui` nếu có.
-- Theme mặc định kiểu Discord dark, float window chính vẫn vuông, control như toggle/slider/back dùng corner nhẹ.
+- Theme mặc định kiểu Discord dark, float window chính vẫn vuông, control như toggle/slider dùng corner nhẹ.
 - Topbar có title và nút `-`; bấm `-` sẽ hide window. Khi window hide, nút TopbarPlus/fallback hiện; bấm nút đó thì window hiện lại và nút tự ẩn.
 - Topbar trong window có nút User và Settings; Settings có chọn theme, DPI và toggle background.
 - App ở màn hình chính là tile kiểu Windows: icon ở trên, tên app ở dưới, có thể dùng image background.
-- Home/Tabs và App page có page-layer background generate sẵn ở [assets/page-layer-background.jpg](assets/page-layer-background.jpg).
-- Nếu tile không truyền background riêng, library dùng background sọc đen generate sẵn ở [assets/dark-stripe-background.jpg](assets/dark-stripe-background.jpg).
+- Home/Tabs, App page và tile fallback dùng background sọc đen generate sẵn ở [assets/dark-stripe-background.jpg](assets/dark-stripe-background.jpg).
 - Giữ app tile sẽ shrink nhẹ và hiện stroke gradient highlight.
 - Bấm app sẽ đổi cùng float window sang page của app đó, không mở thêm window riêng.
 - Window hide sẽ co page còn topbar, rồi topbar thu nhỏ và chạy về vị trí TopbarPlus theo `Align`.
 - Toggle, slider và dropdown có animation khi đổi trạng thái.
-- Có nút back dùng Solar icon PNG để quay lại app grid.
+- Có nút back icon-only dùng Solar icon PNG/fallback để quay lại app grid.
 - Kéo topbar để di chuyển window, tự co layout cho mobile.
 - Hỗ trợ icon dạng `solar:<name>`, `craft:<name>`, URL ảnh, `rbxassetid://...`.
 - Nếu executor có `writefile`, `readfile`, `getcustomasset`, library sẽ cache icon Windows topbar và icon URL/Iconify về file local.
@@ -113,7 +112,7 @@ Trả về `getcustomasset` path của tile background sọc đen generate sẵn
 
 ### `WindowUI.GetPageBackground()`
 
-Trả về `getcustomasset` path của page-layer background generate sẵn dùng cho Home/Tabs và App page.
+Trả về `getcustomasset` path của page background sọc đen dùng cho Home/Tabs và App page.
 
 ### `ui:CreateApp(config)`
 
