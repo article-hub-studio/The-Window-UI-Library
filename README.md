@@ -39,8 +39,7 @@ local ui = WindowUI.new({
 	Scale = 0.94,
 	StartOpen = true,
 	TopbarPlus = {
-		Align = "Left",
-		Label = "⊞",
+		Align = "Center",
 		Caption = "Toggle Window UI",
 	},
 })
@@ -83,7 +82,7 @@ Config:
 - `TopbarPlus = true` hoặc bỏ trống: auto-load TopbarPlus Extended.
 - `TopbarPlus = false`: không load TopbarPlus, chỉ dùng fallback button trong `ScreenGui`.
 - `TopbarPlus = { Icon = Icon }`: dùng `Icon` class bạn đã load sẵn.
-- `TopbarPlus = { Source = "...", Align = "Left", Label = "⊞", Caption = "..." }`: đổi source/position/label/caption.
+- `TopbarPlus = { Source = "...", Align = "Center", Label = "", Caption = "..." }`: đổi source/position/label/caption.
 
 Library không modify theme TopbarPlus. Khi window đang mở, TopbarPlus icon sẽ được `setEnabled(false)`; khi window hide, icon `setEnabled(true)` để làm nút mở lại. Icon fallback mặc định được vẽ dạng Windows: nền đen, 4 ô trắng. Nếu bạn truyền `Image`, TopbarPlus sẽ dùng image đó.
 
@@ -117,11 +116,14 @@ Icon formats:
 ```lua
 Icon = "rbxassetid://123456"
 Icon = "solar:settings-linear"
+Icon = "solar:settings" -- auto thử settings/settings-linear/settings-outline/settings-broken
 Icon = "craft:tools"
 Icon = "https://example.com/icon.png"
 Icon = { Pack = "Solar", Name = "user-rounded-linear" }
 Icon = { Pack = "Craft", Name = "shield" }
 ```
+
+Solar icon dùng Iconify API theo collection `solar`. Craft icon trong executor được render bằng fallback shape/glyph local để không phụ thuộc Figma runtime.
 
 ### App Controls
 

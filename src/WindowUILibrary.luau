@@ -514,8 +514,10 @@ end
 local function trimIconVariant(name: string): string
 	local cleaned = name:lower()
 	cleaned = cleaned:gsub("^solar:", ""):gsub("^craft:", "")
-	cleaned = cleaned:gsub("%-linear$", ""):gsub("%-outline$", ""):gsub("%-broken$", ""):gsub("%-bold$", "")
+	cleaned = cleaned:gsub("%-line%-duotone$", ""):gsub("%-bold%-duotone$", ""):gsub("%-linear$", "")
+	cleaned = cleaned:gsub("%-outline$", ""):gsub("%-broken$", ""):gsub("%-bold$", ""):gsub("%-duotone$", "")
 	cleaned = cleaned:gsub("%-rounded$", ""):gsub("%-line$", "")
+	cleaned = cleaned:gsub("%-minimalistic$", ""):gsub("%-angle$", "")
 	return cleaned
 end
 
@@ -531,10 +533,19 @@ local SOLAR_GLYPHS = {
 	code = "<>",
 	user = "◌",
 	profile = "◌",
+	notification = "•",
+	bell = "•",
+	calendar = "□",
+	chat = "◍",
+	message = "◍",
+	graph = "⌁",
+	chart = "⌁",
 	shield = "◇",
 	lock = "□",
 	star = "✧",
 	rocket = "△",
+	sun = "☼",
+	moon = "◐",
 }
 
 local CRAFT_GLYPHS = {
@@ -547,8 +558,17 @@ local CRAFT_GLYPHS = {
 	code = "{}",
 	user = "●",
 	profile = "●",
+	notification = "▪",
+	bell = "▪",
+	calendar = "▤",
+	chat = "▥",
+	message = "▥",
+	graph = "▧",
+	chart = "▧",
 	shield = "◈",
 	star = "✦",
+	sun = "✧",
+	moon = "◒",
 }
 
 local function getGlyph(pack: string, name: string): string
@@ -564,24 +584,66 @@ local function getGlyph(pack: string, name: string): string
 	return if pack == "craft" then "▣" else "✦"
 end
 
+local function getIconKind(pack: string, name: string): string
+	local cleaned = trimIconVariant(name)
+	for _, key in ipairs({
+		"settings",
+		"tool",
+		"home",
+		"folder",
+		"terminal",
+		"code",
+		"user",
+		"profile",
+		"shield",
+		"lock",
+		"calendar",
+		"chat",
+		"message",
+		"graph",
+		"chart",
+		"bell",
+		"notification",
+		"star",
+		"sun",
+		"moon",
+	}) do
+		if cleaned:find(key, 1, true) then
+			return key
+		end
+	end
+
+	return if pack == "craft" then "block" else "spark"
+end
+
 local function iconifyAsset(prefix: string, name: string, color: Color3): string?
 	local httpName = name:gsub("^" .. prefix .. ":", "")
 	local colorHex = colorToHex(color)
-	local url = ("https://api.iconify.design/%s/%s.svg?color=%%23%s&width=96&height=96"):format(
-		prefix,
-		httpName,
-		colorHex
-	)
 
-	local ok, content = pcall(function()
-		return (cloneRef(rawGame) :: any):HttpGet(url)
-	end)
-	if not ok or type(content) ~= "string" or #content == 0 or content:find("<svg", 1, true) == nil then
-		return nil
+	local candidates = { httpName }
+	if prefix == "solar" and not httpName:find("%-") then
+		table.insert(candidates, httpName .. "-linear")
+		table.insert(candidates, httpName .. "-outline")
+		table.insert(candidates, httpName .. "-broken")
 	end
 
-	local path = ("WindowUILibrary/icons/%s_%s_%s.svg"):format(prefix, sanitizeFileName(httpName), colorHex)
-	return writeExecutorAsset(path, content)
+	for _, candidate in ipairs(candidates) do
+		local path = ("WindowUILibrary/icons/%s_%s_%s.svg"):format(prefix, sanitizeFileName(candidate), colorHex)
+		local url = ("https://api.iconify.design/%s/%s.svg?color=%%23%s&width=96&height=96"):format(
+			prefix,
+			candidate,
+			colorHex
+		)
+
+		local ok, content = pcall(function()
+			return (cloneRef(rawGame) :: any):HttpGet(url)
+		end)
+		if ok and type(content) == "string" and #content > 0 and content:find("<svg", 1, true) ~= nil then
+			return writeExecutorAsset(path, content)
+		end
+	end
+
+	return nil
 end
 
 local function urlAsset(url: string): string?
@@ -684,6 +746,8 @@ local function renderGeneratedIcon(
 	addStroke(shell, theme.Stroke or DEFAULT_THEME.Stroke, if pack == "craft" then 0.56 else 0.7, 1)
 
 	if pack == "craft" then
+		local accent = theme.Accent or DEFAULT_THEME.Accent
+		local kind = getIconKind(pack, name)
 		for index, offset in ipairs({
 			Vector2.new(5, 5),
 			Vector2.new(size - 13, 5),
@@ -701,6 +765,83 @@ local function renderGeneratedIcon(
 				Parent = shell,
 			})
 		end
+
+		if kind == "settings" or kind == "tool" then
+			create("Frame", {
+				Name = "CraftBarA",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(0.5, 0.5),
+				Rotation = -38,
+				Size = UDim2.fromOffset(math.max(16, size - 14), 4),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+			create("Frame", {
+				Name = "CraftBarB",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(0.5, 0.5),
+				Rotation = 38,
+				Size = UDim2.fromOffset(math.max(14, size - 18), 4),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+		elseif kind == "shield" or kind == "lock" then
+			create("Frame", {
+				Name = "CraftShield",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(0.5, 0.52),
+				Rotation = 45,
+				Size = UDim2.fromOffset(math.max(13, size - 16), math.max(13, size - 16)),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+		elseif kind == "folder" then
+			create("Frame", {
+				Name = "CraftFolderTab",
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(9, 11),
+				Size = UDim2.fromOffset(math.max(8, size // 3), 5),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+			create("Frame", {
+				Name = "CraftFolderBody",
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(8, 16),
+				Size = UDim2.fromOffset(size - 16, size - 24),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+		elseif kind == "user" or kind == "profile" then
+			create("Frame", {
+				Name = "CraftUserHead",
+				AnchorPoint = Vector2.new(0.5, 0),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.new(0.5, 0, 0, 9),
+				Size = UDim2.fromOffset(math.max(8, size // 4), math.max(8, size // 4)),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+			create("Frame", {
+				Name = "CraftUserBody",
+				AnchorPoint = Vector2.new(0.5, 1),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.new(0.5, 0, 1, -8),
+				Size = UDim2.fromOffset(math.max(16, size - 16), math.max(9, size // 4)),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+		end
 	end
 
 	local glyph = create("TextLabel", {
@@ -709,7 +850,9 @@ local function renderGeneratedIcon(
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
 		Text = getGlyph(pack, name),
-		TextColor3 = theme.Text or DEFAULT_THEME.Text,
+		TextColor3 = if pack == "craft"
+			then (theme.Window or DEFAULT_THEME.Window)
+			else (theme.Text or DEFAULT_THEME.Text),
 		TextSize = if size <= 30 then 16 else 20,
 		Font = Enum.Font.GothamMedium,
 		ZIndex = zIndex + 2,
@@ -856,7 +999,8 @@ local function normalizeTopbarConfig(config: boolean | TopbarPlusConfig?): Topba
 		return {
 			Enabled = true,
 			Source = DEFAULT_TOPBARPLUS_SOURCE,
-			Align = "Left",
+			Align = "Center",
+			Label = "",
 			Width = 44,
 		}
 	end
@@ -867,7 +1011,7 @@ local function normalizeTopbarConfig(config: boolean | TopbarPlusConfig?): Topba
 
 	local normalized = config
 	normalized.Source = normalized.Source or DEFAULT_TOPBARPLUS_SOURCE
-	normalized.Align = normalized.Align or "Left"
+	normalized.Align = normalized.Align or "Center"
 	normalized.Width = normalized.Width or 44
 	return normalized
 end
@@ -1261,13 +1405,13 @@ function WindowUI:_setupTopbarPlus(configValue: boolean | TopbarPlusConfig?)
 	self._topbarIcon = icon
 
 	pcall(function()
-		icon:setLabel(config.Label or "⊞")
+		icon:setLabel(config.Label or "")
 	end)
 	pcall(function()
 		icon:setWidth(config.Width or 44)
 	end)
 	pcall(function()
-		icon:align(config.Align or "Left")
+		icon:align(config.Align or "Center")
 	end)
 	pcall(function()
 		icon:setCaption(config.Caption or self.Title)
@@ -1320,7 +1464,8 @@ function WindowUI:_createFallbackTopbarButton()
 		AutoButtonColor = false,
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(12, 9),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 9),
 		Size = UDim2.fromOffset(38, 30),
 		Text = "",
 		Visible = not self.Window.Visible,

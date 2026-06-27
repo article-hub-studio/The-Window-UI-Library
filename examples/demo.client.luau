@@ -14,8 +14,7 @@ local ui = WindowUI.new({
 	Scale = 0.94,
 	StartOpen = true,
 	TopbarPlus = {
-		Align = "Left",
-		Label = "⊞",
+		Align = "Center",
 		Caption = "Toggle Window UI",
 	},
 	Theme = {
