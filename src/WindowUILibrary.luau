@@ -267,6 +267,8 @@ local DEFAULT_TOPBARPLUS_SOURCE =
 	"https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"
 local DEFAULT_BACKGROUND_URL =
 	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/dark-stripe-background.jpg"
+local DEFAULT_PAGE_BACKGROUND_URL =
+	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/page-layer-background.jpg"
 
 local DEFAULT_THEME = {
 	Accent = Color3.fromRGB(88, 101, 242),
@@ -344,7 +346,8 @@ local THEME_PRESETS: { [string]: Theme } = {
 local TWEEN_FAST = TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TWEEN_SOFT = TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TWEEN_WINDOW_IN = TweenInfo.new(0.42, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local TWEEN_WINDOW_OUT = TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+local TWEEN_WINDOW_OUT = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
+local TWEEN_BODY_OUT = TweenInfo.new(0.14, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 
 local function getPlayerGui(): Instance
 	if LOCAL_PLAYER then
@@ -428,6 +431,21 @@ local function addStroke(parent: GuiObject, color: Color3, transparency: number,
 	stroke.Thickness = thickness or 1
 	stroke.Parent = parent
 	return stroke
+end
+
+local function addCorner(parent: GuiObject, radius: UDim): UICorner?
+	local ok, corner = pcall(function()
+		local created = Instance.new("UICorner")
+		created.CornerRadius = radius
+		created.Parent = parent
+		return created
+	end)
+
+	if ok then
+		return corner
+	end
+
+	return nil
 end
 
 local function addPadding(parent: GuiObject, left: number, top: number, right: number, bottom: number): UIPadding
@@ -699,6 +717,8 @@ end
 
 local cachedDefaultBackground: string? = nil
 local triedDefaultBackground = false
+local cachedPageBackground: string? = nil
+local triedPageBackground = false
 
 local function getDefaultBackgroundAsset(): string?
 	if triedDefaultBackground then
@@ -712,6 +732,21 @@ end
 
 function WindowUI.GetDefaultBackground(): string?
 	return getDefaultBackgroundAsset()
+end
+
+local function getPageBackgroundAsset(): string?
+	if triedPageBackground then
+		return cachedPageBackground
+	end
+
+	triedPageBackground = true
+	cachedPageBackground =
+		urlAsset(DEFAULT_PAGE_BACKGROUND_URL, "WindowUILibrary/backgrounds/page_layer_background.jpg")
+	return cachedPageBackground
+end
+
+function WindowUI.GetPageBackground(): string?
+	return getPageBackgroundAsset()
 end
 
 local function resolveIcon(spec: any, color: Color3): (string?, string?, string?)
@@ -1206,6 +1241,12 @@ function WindowUI:_buildBody()
 		Size = UDim2.new(1, 0, 1, -36),
 		Parent = self.Window,
 	}) :: Frame
+	self.BodyScale = create("UIScale", {
+		Scale = 1,
+		Parent = self.Body,
+	}) :: UIScale
+
+	local pageBackground = getPageBackgroundAsset()
 
 	self.HomePage = create("Frame", {
 		Name = "HomePage",
@@ -1215,6 +1256,42 @@ function WindowUI:_buildBody()
 		Visible = true,
 		Parent = self.Body,
 	}) :: Frame
+
+	self.HomeBackground = create("ImageLabel", {
+		Name = "HomeBackground",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = pageBackground or "",
+		ImageTransparency = 0.22,
+		ScaleType = Enum.ScaleType.Crop,
+		Size = UDim2.fromScale(1, 1),
+		Visible = pageBackground ~= nil,
+		ZIndex = 0,
+		Parent = self.HomePage,
+	}) :: ImageLabel
+
+	local homeShade = create("Frame", {
+		Name = "HomeShade",
+		BackgroundColor3 = theme.Window or DEFAULT_THEME.Window,
+		BackgroundTransparency = 0.24,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 1,
+		Parent = self.HomePage,
+	}) :: Frame
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.Window or DEFAULT_THEME.Window),
+			ColorSequenceKeypoint.new(1, theme.Surface or DEFAULT_THEME.Surface),
+		}),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.08),
+			NumberSequenceKeypoint.new(0.58, 0.34),
+			NumberSequenceKeypoint.new(1, 0.14),
+		}),
+		Rotation = 115,
+		Parent = homeShade,
+	})
 
 	local homeTitle = create("TextLabel", {
 		Name = "HomeTitle",
@@ -1258,6 +1335,19 @@ function WindowUI:_buildBody()
 		Parent = self.Body,
 	}) :: Frame
 
+	self.AppPageBackground = create("ImageLabel", {
+		Name = "PageBackground",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = pageBackground or "",
+		ImageTransparency = 0.18,
+		ScaleType = Enum.ScaleType.Crop,
+		Size = UDim2.fromScale(1, 1),
+		Visible = pageBackground ~= nil,
+		ZIndex = 0,
+		Parent = self.AppPage,
+	}) :: ImageLabel
+
 	self.AppBackground = create("ImageLabel", {
 		Name = "AppBackground",
 		BackgroundTransparency = 1,
@@ -1267,7 +1357,7 @@ function WindowUI:_buildBody()
 		ScaleType = Enum.ScaleType.Crop,
 		Size = UDim2.fromScale(1, 1),
 		Visible = false,
-		ZIndex = 0,
+		ZIndex = 1,
 		Parent = self.AppPage,
 	}) :: ImageLabel
 
@@ -1277,7 +1367,7 @@ function WindowUI:_buildBody()
 		BackgroundTransparency = 0.18,
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
-		ZIndex = 1,
+		ZIndex = 2,
 		Parent = self.AppPage,
 	}) :: Frame
 
@@ -1300,7 +1390,7 @@ function WindowUI:_buildBody()
 		BorderSizePixel = 0,
 		Position = UDim2.fromOffset(10, 8),
 		Size = UDim2.new(1, -20, 0, 38),
-		ZIndex = 3,
+		ZIndex = 4,
 		Parent = self.AppPage,
 	}) :: Frame
 
@@ -1308,16 +1398,24 @@ function WindowUI:_buildBody()
 		Name = "Back",
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
+		BackgroundTransparency = 0.02,
 		BorderSizePixel = 0,
-		Size = UDim2.fromOffset(32, 32),
-		Text = "<",
-		TextColor3 = theme.Text or DEFAULT_THEME.Text,
-		TextSize = 16,
-		Font = Enum.Font.GothamBold,
-		ZIndex = 4,
+		Size = UDim2.fromOffset(36, 32),
+		Text = "",
+		ZIndex = 5,
 		Parent = appHeader,
 	}) :: TextButton
-	addStroke(self.BackButton, theme.Stroke or DEFAULT_THEME.Stroke, 0.55, 1)
+	addCorner(self.BackButton, UDim.new(0, 10))
+	addStroke(self.BackButton, theme.Stroke or DEFAULT_THEME.Stroke, 0.44, 1)
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.ButtonHover or DEFAULT_THEME.ButtonHover),
+			ColorSequenceKeypoint.new(1, theme.Button or DEFAULT_THEME.Button),
+		}),
+		Rotation = 90,
+		Parent = self.BackButton,
+	})
+	renderIcon(self.BackButton, "solar:alt-arrow-left-bold", 18, UDim2.new(0.5, 0, 0, 7), 6, theme)
 	bindButtonMotion(
 		self,
 		self.BackButton,
@@ -1333,20 +1431,20 @@ function WindowUI:_buildBody()
 		Name = "AppIcon",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(44, 3),
+		Position = UDim2.fromOffset(48, 3),
 		Size = UDim2.fromOffset(26, 26),
-		ZIndex = 4,
+		ZIndex = 5,
 		Parent = appHeader,
 	}) :: Frame
 
 	self.AppTitle = create("TextLabel", {
 		Name = "AppTitle",
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(78, 0),
-		Size = UDim2.new(1, -82, 0, 32),
+		Position = UDim2.fromOffset(82, 0),
+		Size = UDim2.new(1, -86, 0, 32),
 		Text = "",
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 4,
+		ZIndex = 5,
 		Parent = appHeader,
 	}) :: TextLabel
 	setText(self.AppTitle, theme.Text or DEFAULT_THEME.Text, 16, Enum.Font.GothamSemibold)
@@ -1361,7 +1459,7 @@ function WindowUI:_buildBody()
 		ScrollBarImageColor3 = theme.MutedText or DEFAULT_THEME.MutedText,
 		ScrollBarThickness = 3,
 		Size = UDim2.new(1, -28, 1, -62),
-		ZIndex = 3,
+		ZIndex = 4,
 		Parent = self.AppPage,
 	}) :: ScrollingFrame
 	addPadding(self.ContentScroll, 0, 0, 8, 14)
@@ -1427,6 +1525,14 @@ function WindowUI:_bindResponsiveLayout()
 			end
 			self.AppGrid.CellSize = UDim2.fromOffset(80, 82)
 		end
+
+		if self.FallbackButton and not self.Window.Visible then
+			self.FallbackButton.Position = self:_getCollapsedTopbarPosition()
+		end
+		if not self.Window.Visible then
+			self._windowRestoreSize = self.Window.Size
+			self._windowRestorePosition = self.Window.Position
+		end
 	end
 
 	apply()
@@ -1464,6 +1570,7 @@ function WindowUI:_setupTopbarPlus(configValue: boolean | TopbarPlusConfig?)
 	if type(Icon) ~= "table" or type(Icon.new) ~= "function" then
 		return
 	end
+	self._topbarAlign = config.Align or "Center"
 
 	local ok, icon = pcall(function()
 		return Icon.new()
@@ -1534,9 +1641,8 @@ function WindowUI:_createFallbackTopbarButton()
 		AutoButtonColor = false,
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 9),
-		Size = UDim2.fromOffset(38, 30),
+		Position = self:_getCollapsedTopbarPosition(),
+		Size = UDim2.fromOffset(44, 30),
 		Text = "",
 		Visible = not self.Window.Visible,
 		ZIndex = 100,
@@ -1589,11 +1695,15 @@ function WindowUI:_animatePage(page: GuiObject, offsetX: number)
 end
 
 function WindowUI:_getDefaultBackground(): string?
-	if self._useDefaultBackground == false then
+	return getDefaultBackgroundAsset()
+end
+
+function WindowUI:_getPageBackground(): string?
+	if self._usePageBackground == false then
 		return nil
 	end
 
-	return getDefaultBackgroundAsset()
+	return getPageBackgroundAsset()
 end
 
 function WindowUI:_refreshThemeVisuals()
@@ -1619,6 +1729,10 @@ function WindowUI:_refreshThemeVisuals()
 	if self.SettingsButton then
 		self.SettingsButton.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
 		renderIcon(self.SettingsButton, "solar:settings-bold", 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
+	end
+	if self.BackButton then
+		self.BackButton.BackgroundColor3 = theme.Button or DEFAULT_THEME.Button
+		renderIcon(self.BackButton, "solar:alt-arrow-left-bold", 18, UDim2.new(0.5, 0, 0, 7), 6, theme)
 	end
 
 	for _, descendant in ipairs(self.Window:GetDescendants()) do
@@ -1686,6 +1800,20 @@ function WindowUI:SetScale(scale: number)
 	end
 end
 
+function WindowUI:_getCollapsedTopbarPosition(): UDim2
+	local viewport = getViewport()
+	local align = tostring(self._topbarAlign or "Center"):lower()
+
+	if align == "left" then
+		return UDim2.fromOffset(12, 9)
+	end
+	if align == "right" then
+		return UDim2.fromOffset(math.max(12, viewport.X - 56), 9)
+	end
+
+	return UDim2.fromOffset(math.max(12, (viewport.X - 44) / 2), 9)
+end
+
 function WindowUI:_buildSystemPages()
 	local settings = self:_registerApp(
 		{
@@ -1717,20 +1845,24 @@ function WindowUI:_buildSystemPages()
 		end,
 	}, appearance)
 	settings:AddToggle({
-		Text = "Dark stripe background",
+		Text = "Page background",
 		Default = true,
 		Callback = function(enabled)
-			self._useDefaultBackground = enabled
-			if self._activeApp and self._activeApp.BackgroundImage == nil then
-				local backgroundImage = self:_getDefaultBackground()
-				self.AppBackground.Image = backgroundImage or ""
-				self.AppBackground.Visible = backgroundImage ~= nil and backgroundImage ~= ""
+			self._usePageBackground = enabled
+			local pageBackground = self:_getPageBackground()
+			if self.HomeBackground then
+				self.HomeBackground.Image = pageBackground or ""
+				self.HomeBackground.Visible = pageBackground ~= nil
+			end
+			if self.AppPageBackground then
+				self.AppPageBackground.Image = pageBackground or ""
+				self.AppPageBackground.Visible = pageBackground ~= nil
 			end
 		end,
 	}, appearance)
 
 	local behavior = settings:CreateSection("Window")
-	settings:AddLabel("Topbar alignment: Center", behavior)
+	settings:AddLabel("Topbar collapse follows TopbarPlus Align", behavior)
 	settings:AddLabel("TopbarPlus theme: untouched", behavior)
 
 	local user = self:_registerApp(
@@ -1770,8 +1902,9 @@ function WindowUI.new(config: WindowConfig?)
 		_activeContent = nil,
 		_theme = mergeTheme(resolvedConfig.Theme),
 		_topbarIcon = nil,
+		_topbarAlign = "Center",
 		_syncingTopbar = false,
-		_useDefaultBackground = true,
+		_usePageBackground = true,
 		_wasDragged = false,
 		_windowBaseScale = resolvedConfig.Scale or 0.94,
 		_visibleIntent = resolvedConfig.StartOpen ~= false,
@@ -1796,7 +1929,9 @@ function WindowUI:SetVisible(visible: boolean)
 	self._visibleIntent = visible
 
 	if self.Window.Visible == visible then
-		self:_syncTopbarIcon(visible)
+		if visible then
+			self:_syncTopbarIcon(true)
+		end
 		if self.FallbackButton then
 			self.FallbackButton.Visible = not visible
 		end
@@ -1807,26 +1942,87 @@ function WindowUI:SetVisible(visible: boolean)
 		if self.FallbackButton then
 			self.FallbackButton.Visible = false
 		end
+		self:_syncTopbarIcon(true)
+
+		local restoreSize = self._windowRestoreSize or self._baseSize
+		local restorePosition = self._windowRestorePosition or self._basePosition
+		self.Window.Size = UDim2.fromOffset(44, 36)
+		self.Window.Position = self:_getCollapsedTopbarPosition()
 		self.Window.Visible = true
-		self.WindowScale.Scale = self._windowBaseScale * 0.9
-		self.Window.BackgroundTransparency = 0.18
+		self.WindowScale.Scale = self._windowBaseScale * 0.78
+		self.Window.BackgroundTransparency = 0.16
+		if self.Body then
+			self.Body.Visible = false
+			self.Body.Position = UDim2.fromOffset(0, 42)
+		end
+		if self.BodyScale then
+			self.BodyScale.Scale = 0.9
+		end
+		tween(self.Window, TWEEN_WINDOW_IN, {
+			BackgroundTransparency = 0.03,
+			Position = restorePosition,
+			Size = restoreSize,
+		})
 		tween(self.WindowScale, TWEEN_WINDOW_IN, { Scale = self._windowBaseScale })
-		tween(self.Window, TWEEN_SOFT, { BackgroundTransparency = 0.03 })
-	else
-		tween(self.WindowScale, TWEEN_WINDOW_OUT, { Scale = self._windowBaseScale * 0.94 })
-		tween(self.Window, TWEEN_WINDOW_OUT, { BackgroundTransparency = 0.18 })
-		task.delay(TWEEN_WINDOW_OUT.Time, function()
-			if self._visibleIntent == false then
-				self.Window.Visible = false
-				self.WindowScale.Scale = self._windowBaseScale
-				self.Window.BackgroundTransparency = 0.03
+		task.delay(0.12, function()
+			if self._visibleIntent == true then
+				if self.Body then
+					self.Body.Visible = true
+					tween(self.Body, TWEEN_SOFT, { Position = UDim2.fromOffset(0, 36) })
+				end
+				if self.BodyScale then
+					tween(self.BodyScale, TWEEN_SOFT, { Scale = 1 })
+				end
 			end
 		end)
-	end
-
-	self:_syncTopbarIcon(visible)
-	if self.FallbackButton then
-		self.FallbackButton.Visible = not visible
+	else
+		self._windowRestoreSize = self.Window.Size
+		self._windowRestorePosition = self.Window.Position
+		if self.FallbackButton then
+			self.FallbackButton.Visible = false
+		end
+		if self.BodyScale then
+			tween(self.BodyScale, TWEEN_BODY_OUT, { Scale = 0.86 })
+		end
+		local collapseDelay = TWEEN_BODY_OUT.Time * 0.78
+		if self.Body then
+			tween(self.Body, TWEEN_BODY_OUT, { Position = UDim2.fromOffset(0, 48) })
+			task.delay(collapseDelay, function()
+				if self._visibleIntent == false and self.Body then
+					self.Body.Visible = false
+				end
+			end)
+		end
+		task.delay(collapseDelay, function()
+			if self._visibleIntent == false then
+				tween(self.WindowScale, TWEEN_WINDOW_OUT, { Scale = self._windowBaseScale * 0.74 })
+				tween(self.Window, TWEEN_WINDOW_OUT, {
+					BackgroundTransparency = 0.16,
+					Position = self:_getCollapsedTopbarPosition(),
+					Size = UDim2.fromOffset(44, 36),
+				})
+			end
+		end)
+		task.delay(collapseDelay + TWEEN_WINDOW_OUT.Time, function()
+			if self._visibleIntent == false then
+				self.Window.Visible = false
+				self.Window.Size = self._windowRestoreSize or self._baseSize
+				self.Window.Position = self._windowRestorePosition or self._basePosition
+				self.Window.BackgroundTransparency = 0.03
+				self.WindowScale.Scale = self._windowBaseScale
+				if self.Body then
+					self.Body.Visible = true
+					self.Body.Position = UDim2.fromOffset(0, 36)
+				end
+				if self.BodyScale then
+					self.BodyScale.Scale = 1
+				end
+				if self.FallbackButton then
+					self.FallbackButton.Visible = true
+				end
+				self:_syncTopbarIcon(false)
+			end
+		end)
 	end
 end
 
@@ -1864,7 +2060,7 @@ function WindowUI:OpenApp(appName: string)
 	self.AppIcon.Visible = true
 	renderIcon(self.AppIcon, app.Icon or "solar:star-bold", 26, UDim2.new(0.5, 0, 0, 0), 4, self._theme)
 
-	local backgroundImage = app.BackgroundImage or self:_getDefaultBackground()
+	local backgroundImage = app.BackgroundImage
 	self.AppBackground.Image = backgroundImage or ""
 	self.AppBackground.Visible = backgroundImage ~= nil and backgroundImage ~= ""
 
@@ -2183,7 +2379,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		Name = "Label",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -54, 1, 0),
+		Size = UDim2.new(1, -62, 1, 0),
 		Text = config.Text,
 		ZIndex = 6,
 		Parent = row,
@@ -2195,24 +2391,36 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		AutoButtonColor = false,
 		AnchorPoint = Vector2.new(1, 0.5),
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
+		BackgroundTransparency = 0.02,
 		BorderSizePixel = 0,
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(42, 22),
+		Size = UDim2.fromOffset(50, 24),
 		Text = "",
 		ZIndex = 7,
 		Parent = row,
 	}) :: TextButton
-	local switchStroke = addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
+	addCorner(button, UDim.new(1, 0))
+	local switchStroke = addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.5, 1)
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.ButtonHover or DEFAULT_THEME.ButtonHover),
+			ColorSequenceKeypoint.new(1, theme.Button or DEFAULT_THEME.Button),
+		}),
+		Rotation = 90,
+		Parent = button,
+	})
 
 	local knob = create("Frame", {
 		Name = "Knob",
 		BackgroundColor3 = theme.Text or DEFAULT_THEME.Text,
 		BorderSizePixel = 0,
 		Position = UDim2.fromOffset(3, 3),
-		Size = UDim2.fromOffset(16, 16),
+		Size = UDim2.fromOffset(18, 18),
 		ZIndex = 8,
 		Parent = button,
 	}) :: Frame
+	addCorner(knob, UDim.new(1, 0))
+	addStroke(knob, theme.Window or DEFAULT_THEME.Window, 0.72, 1)
 	local knobScale = create("UIScale", {
 		Scale = 1,
 		Parent = knob,
@@ -2230,7 +2438,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		})
 		tween(knob, TWEEN_SOFT, {
 			BackgroundColor3 = activeTheme.Text or DEFAULT_THEME.Text,
-			Position = if enabled then UDim2.new(1, -19, 0, 3) else UDim2.fromOffset(3, 3),
+			Position = if enabled then UDim2.new(1, -21, 0, 3) else UDim2.fromOffset(3, 3),
 		})
 		if fire then
 			knobScale.Scale = 0.84
@@ -2264,13 +2472,14 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 	local row = create("Frame", {
 		Name = "Slider",
 		BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface,
-		BackgroundTransparency = 0.14,
+		BackgroundTransparency = 0.1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 64),
+		Size = UDim2.new(1, 0, 0, 70),
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
 	}) :: Frame
-	addStroke(row, theme.Stroke or DEFAULT_THEME.Stroke, 0.7, 1)
+	addCorner(row, UDim.new(0, 10))
+	addStroke(row, theme.Stroke or DEFAULT_THEME.Stroke, 0.62, 1)
 
 	local label = create("TextLabel", {
 		Name = "Label",
@@ -2290,27 +2499,30 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BackgroundTransparency = 0.04,
 		BorderSizePixel = 0,
-		Position = UDim2.new(1, -10, 0, 6),
-		Size = UDim2.fromOffset(62, 22),
+		Position = UDim2.new(1, -10, 0, 7),
+		Size = UDim2.fromOffset(66, 22),
 		Text = "",
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextLabel
 	setText(valueLabel, theme.Text or DEFAULT_THEME.Text, 11, Enum.Font.GothamMedium)
 	valueLabel.TextXAlignment = Enum.TextXAlignment.Center
-	addStroke(valueLabel, theme.Stroke or DEFAULT_THEME.Stroke, 0.82, 1)
+	addCorner(valueLabel, UDim.new(0, 8))
+	addStroke(valueLabel, theme.Stroke or DEFAULT_THEME.Stroke, 0.76, 1)
 
 	local track = create("TextButton", {
 		Name = "Track",
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
+		BackgroundTransparency = 0.08,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(10, 42),
-		Size = UDim2.new(1, -20, 0, 8),
+		Position = UDim2.fromOffset(12, 45),
+		Size = UDim2.new(1, -24, 0, 10),
 		Text = "",
 		ZIndex = 6,
 		Parent = row,
 	}) :: TextButton
+	addCorner(track, UDim.new(1, 0))
 	addStroke(track, theme.Stroke or DEFAULT_THEME.Stroke, 0.76, 1)
 
 	local fill = create("Frame", {
@@ -2321,6 +2533,7 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 		ZIndex = 7,
 		Parent = track,
 	}) :: Frame
+	addCorner(fill, UDim.new(1, 0))
 	create("UIGradient", {
 		Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, theme.Accent or DEFAULT_THEME.Accent),
@@ -2336,11 +2549,16 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.Text or DEFAULT_THEME.Text,
 		BorderSizePixel = 0,
 		Position = UDim2.fromScale(0, 0.5),
-		Size = UDim2.fromOffset(10, 16),
+		Size = UDim2.fromOffset(18, 18),
 		ZIndex = 8,
 		Parent = track,
 	}) :: Frame
-	addStroke(knob, theme.Window or DEFAULT_THEME.Window, 0.2, 1)
+	addCorner(knob, UDim.new(1, 0))
+	addStroke(knob, theme.Window or DEFAULT_THEME.Window, 0.16, 2)
+	local knobScale = create("UIScale", {
+		Scale = 1,
+		Parent = knob,
+	}) :: UIScale
 
 	local function snap(raw: number): number
 		if step <= 0 then
@@ -2353,8 +2571,15 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 	local function setValue(nextValue: number, fire: boolean)
 		value = math.clamp(snap(nextValue), minValue, maxValue)
 		local percent = (value - minValue) / (maxValue - minValue)
-		fill.Size = UDim2.fromScale(percent, 1)
-		knob.Position = UDim2.fromScale(percent, 0.5)
+		local fillSize = UDim2.fromScale(percent, 1)
+		local knobPosition = UDim2.fromScale(percent, 0.5)
+		if fire then
+			tween(fill, TWEEN_FAST, { Size = fillSize })
+			tween(knob, TWEEN_FAST, { Position = knobPosition })
+		else
+			fill.Size = fillSize
+			knob.Position = knobPosition
+		end
 		valueLabel.Text = formatNumber(value)
 		if fire then
 			safeValueCallback(config.Callback, value)
@@ -2376,6 +2601,7 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 		end
 
 		dragging = true
+		tween(knobScale, TWEEN_FAST, { Scale = 1.14 })
 		setFromX(input.Position.X)
 	end))
 
@@ -2388,6 +2614,7 @@ function App:AddSlider(config: SliderConfig, parent: GuiObject?): Frame
 	self:_track(UserInputService.InputEnded:Connect(function(input)
 		if isPressInput(input) then
 			dragging = false
+			tween(knobScale, TWEEN_SOFT, { Scale = 1 })
 		end
 	end))
 
@@ -2459,6 +2686,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
 	}) :: Frame
+	addCorner(row, UDim.new(0, 10))
 	addStroke(row, theme.Stroke or DEFAULT_THEME.Stroke, 0.7, 1)
 
 	local label = create("TextLabel", {
@@ -2488,6 +2716,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		Parent = row,
 	}) :: TextButton
 	button.TextXAlignment = Enum.TextXAlignment.Left
+	addCorner(button, UDim.new(0, 8))
 	addPadding(button, 10, 0, 10, 0)
 	addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
 	bindButtonMotion(
@@ -2526,6 +2755,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		ZIndex = 7,
 		Parent = row,
 	}) :: Frame
+	addCorner(optionsFrame, UDim.new(0, 8))
 	addStroke(optionsFrame, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
 	addList(optionsFrame, 0)
 	local optionsScale = create("UIScale", {

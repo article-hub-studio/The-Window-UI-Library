@@ -29,7 +29,6 @@ local ui = WindowUI.new({
 local home = ui:CreateApp({
 	Name = "Home",
 	Icon = "solar:settings-bold",
-	BackgroundImage = DEFAULT_BACKGROUND,
 	TileImage = DEFAULT_BACKGROUND,
 	StartOpen = true,
 	Order = 1,
@@ -58,7 +57,6 @@ home:AddSlider({
 local tools = ui:CreateApp({
 	Name = "Tools",
 	Icon = "craft:tools",
-	BackgroundImage = DEFAULT_BACKGROUND,
 	TileImage = DEFAULT_BACKGROUND,
 	Order = 2,
 })
