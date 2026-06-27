@@ -578,6 +578,12 @@ local function colorToHex(color: Color3): string
 	)
 end
 
+local function urlEncode(value: string): string
+	return (value:gsub("([^%w%-%._~])", function(char)
+		return string.format("%%%02X", string.byte(char))
+	end))
+end
+
 local function trimIconVariant(name: string): string
 	local cleaned = name:lower()
 	cleaned = cleaned:gsub("^solar:", ""):gsub("^craft:", "")
@@ -626,23 +632,25 @@ local function iconifyAsset(prefix: string, name: string, color: Color3): string
 
 	local candidates = { httpName }
 	if prefix == "solar" and not httpName:find("%-") then
+		table.insert(candidates, httpName .. "-bold")
 		table.insert(candidates, httpName .. "-linear")
 		table.insert(candidates, httpName .. "-outline")
 		table.insert(candidates, httpName .. "-broken")
 	end
 
 	for _, candidate in ipairs(candidates) do
-		local path = ("WindowUILibrary/icons/%s_%s_%s.svg"):format(prefix, sanitizeFileName(candidate), colorHex)
-		local url = ("https://api.iconify.design/%s/%s.svg?color=%%23%s&width=96&height=96"):format(
+		local path = ("WindowUILibrary/icons/%s_%s_%s.png"):format(prefix, sanitizeFileName(candidate), colorHex)
+		local svgUrl = ("https://api.iconify.design/%s:%s.svg?color=%%23%s&width=96&height=96"):format(
 			prefix,
 			candidate,
 			colorHex
 		)
+		local pngUrl = ("https://wsrv.nl/?url=%s&output=png&w=96&h=96"):format(urlEncode(svgUrl))
 
 		local ok, content = pcall(function()
-			return (cloneRef(rawGame) :: any):HttpGet(url)
+			return (cloneRef(rawGame) :: any):HttpGet(pngUrl)
 		end)
-		if ok and type(content) == "string" and #content > 0 and content:find("<svg", 1, true) ~= nil then
+		if ok and type(content) == "string" and #content > 8 and content:sub(1, 8) == "\137PNG\r\n\26\n" then
 			return writeExecutorAsset(path, content)
 		end
 	end
@@ -788,195 +796,101 @@ local function renderGeneratedIcon(
 	}) :: Frame
 	addStroke(shell, theme.Stroke or DEFAULT_THEME.Stroke, if pack == "craft" then 0.56 else 0.7, 1)
 
-	if pack == "craft" then
-		local accent = theme.Accent or DEFAULT_THEME.Accent
-		local kind = getIconKind(pack, name)
-		for index, offset in ipairs({
-			Vector2.new(5, 5),
-			Vector2.new(size - 13, 5),
-			Vector2.new(5, size - 13),
-			Vector2.new(size - 13, size - 13),
-		}) do
-			create("Frame", {
-				Name = "CraftBlock" .. index,
-				BackgroundColor3 = theme.Accent or DEFAULT_THEME.Accent,
-				BackgroundTransparency = if index == 1 then 0 else 0.18,
-				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(offset.X, offset.Y),
-				Size = UDim2.fromOffset(8, 8),
-				ZIndex = zIndex + 1,
-				Parent = shell,
-			})
-		end
+	local accent = theme.Accent or DEFAULT_THEME.Accent
+	local kind = getIconKind(pack, name)
+	for index, offset in ipairs({
+		Vector2.new(5, 5),
+		Vector2.new(size - 13, 5),
+		Vector2.new(5, size - 13),
+		Vector2.new(size - 13, size - 13),
+	}) do
+		create("Frame", {
+			Name = "CraftBlock" .. index,
+			BackgroundColor3 = theme.Accent or DEFAULT_THEME.Accent,
+			BackgroundTransparency = if index == 1 then 0 else 0.18,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(offset.X, offset.Y),
+			Size = UDim2.fromOffset(8, 8),
+			ZIndex = zIndex + 1,
+			Parent = shell,
+		})
+	end
 
-		if kind == "settings" or kind == "tool" then
-			create("Frame", {
-				Name = "CraftBarA",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromScale(0.5, 0.5),
-				Rotation = -38,
-				Size = UDim2.fromOffset(math.max(16, size - 14), 4),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-			create("Frame", {
-				Name = "CraftBarB",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromScale(0.5, 0.5),
-				Rotation = 38,
-				Size = UDim2.fromOffset(math.max(14, size - 18), 4),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-		elseif kind == "shield" or kind == "lock" then
-			create("Frame", {
-				Name = "CraftShield",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromScale(0.5, 0.52),
-				Rotation = 45,
-				Size = UDim2.fromOffset(math.max(13, size - 16), math.max(13, size - 16)),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-		elseif kind == "folder" then
-			create("Frame", {
-				Name = "CraftFolderTab",
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(9, 11),
-				Size = UDim2.fromOffset(math.max(8, size // 3), 5),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-			create("Frame", {
-				Name = "CraftFolderBody",
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(8, 16),
-				Size = UDim2.fromOffset(size - 16, size - 24),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-		elseif kind == "user" or kind == "profile" then
-			create("Frame", {
-				Name = "CraftUserHead",
-				AnchorPoint = Vector2.new(0.5, 0),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.new(0.5, 0, 0, 9),
-				Size = UDim2.fromOffset(math.max(8, size // 4), math.max(8, size // 4)),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-			create("Frame", {
-				Name = "CraftUserBody",
-				AnchorPoint = Vector2.new(0.5, 1),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.new(0.5, 0, 1, -8),
-				Size = UDim2.fromOffset(math.max(16, size - 16), math.max(9, size // 4)),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-		end
-	else
-		local accent = theme.Text or DEFAULT_THEME.Text
-		local kind = getIconKind(pack, name)
-		if kind == "settings" or kind == "tool" then
-			for index, rotation in ipairs({ 0, 45, 90, 135 }) do
-				create("Frame", {
-					Name = "SolarGearRay" .. index,
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					BackgroundColor3 = accent,
-					BorderSizePixel = 0,
-					Position = UDim2.fromScale(0.5, 0.5),
-					Rotation = rotation,
-					Size = UDim2.fromOffset(size - 12, 2),
-					ZIndex = zIndex + 1,
-					Parent = shell,
-				})
-			end
-			create("Frame", {
-				Name = "SolarGearCore",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = theme.Window or DEFAULT_THEME.Window,
-				BorderSizePixel = 0,
-				Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.fromOffset(math.max(8, size // 3), math.max(8, size // 3)),
-				ZIndex = zIndex + 2,
-				Parent = shell,
-			})
-		elseif kind == "user" or kind == "profile" then
-			create("Frame", {
-				Name = "SolarUserHead",
-				AnchorPoint = Vector2.new(0.5, 0),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.new(0.5, 0, 0, 8),
-				Size = UDim2.fromOffset(math.max(8, size // 4), math.max(8, size // 4)),
-				ZIndex = zIndex + 1,
-				Parent = shell,
-			})
-			create("Frame", {
-				Name = "SolarUserBody",
-				AnchorPoint = Vector2.new(0.5, 1),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.new(0.5, 0, 1, -8),
-				Size = UDim2.fromOffset(math.max(16, size - 16), math.max(8, size // 5)),
-				ZIndex = zIndex + 1,
-				Parent = shell,
-			})
-		elseif kind == "folder" or kind == "calendar" then
-			create("Frame", {
-				Name = "SolarPanelTop",
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(7, 9),
-				Size = UDim2.fromOffset(size - 14, 4),
-				ZIndex = zIndex + 1,
-				Parent = shell,
-			})
-			create("Frame", {
-				Name = "SolarPanelBody",
-				BackgroundColor3 = accent,
-				BackgroundTransparency = 0.18,
-				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(7, 16),
-				Size = UDim2.fromOffset(size - 14, size - 24),
-				ZIndex = zIndex + 1,
-				Parent = shell,
-			})
-		else
-			create("Frame", {
-				Name = "SolarMarkA",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromScale(0.5, 0.5),
-				Rotation = 45,
-				Size = UDim2.fromOffset(size - 14, 3),
-				ZIndex = zIndex + 1,
-				Parent = shell,
-			})
-			create("Frame", {
-				Name = "SolarMarkB",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = accent,
-				BorderSizePixel = 0,
-				Position = UDim2.fromScale(0.5, 0.5),
-				Rotation = -45,
-				Size = UDim2.fromOffset(size - 14, 3),
-				ZIndex = zIndex + 1,
-				Parent = shell,
-			})
-		end
+	if kind == "settings" or kind == "tool" then
+		create("Frame", {
+			Name = "CraftBarA",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = accent,
+			BorderSizePixel = 0,
+			Position = UDim2.fromScale(0.5, 0.5),
+			Rotation = -38,
+			Size = UDim2.fromOffset(math.max(16, size - 14), 4),
+			ZIndex = zIndex + 2,
+			Parent = shell,
+		})
+		create("Frame", {
+			Name = "CraftBarB",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = accent,
+			BorderSizePixel = 0,
+			Position = UDim2.fromScale(0.5, 0.5),
+			Rotation = 38,
+			Size = UDim2.fromOffset(math.max(14, size - 18), 4),
+			ZIndex = zIndex + 2,
+			Parent = shell,
+		})
+	elseif kind == "shield" or kind == "lock" then
+		create("Frame", {
+			Name = "CraftShield",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = accent,
+			BorderSizePixel = 0,
+			Position = UDim2.fromScale(0.5, 0.52),
+			Rotation = 45,
+			Size = UDim2.fromOffset(math.max(13, size - 16), math.max(13, size - 16)),
+			ZIndex = zIndex + 2,
+			Parent = shell,
+		})
+	elseif kind == "folder" then
+		create("Frame", {
+			Name = "CraftFolderTab",
+			BackgroundColor3 = accent,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(9, 11),
+			Size = UDim2.fromOffset(math.max(8, size // 3), 5),
+			ZIndex = zIndex + 2,
+			Parent = shell,
+		})
+		create("Frame", {
+			Name = "CraftFolderBody",
+			BackgroundColor3 = accent,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(8, 16),
+			Size = UDim2.fromOffset(size - 16, size - 24),
+			ZIndex = zIndex + 2,
+			Parent = shell,
+		})
+	elseif kind == "user" or kind == "profile" then
+		create("Frame", {
+			Name = "CraftUserHead",
+			AnchorPoint = Vector2.new(0.5, 0),
+			BackgroundColor3 = accent,
+			BorderSizePixel = 0,
+			Position = UDim2.new(0.5, 0, 0, 9),
+			Size = UDim2.fromOffset(math.max(8, size // 4), math.max(8, size // 4)),
+			ZIndex = zIndex + 2,
+			Parent = shell,
+		})
+		create("Frame", {
+			Name = "CraftUserBody",
+			AnchorPoint = Vector2.new(0.5, 1),
+			BackgroundColor3 = accent,
+			BorderSizePixel = 0,
+			Position = UDim2.new(0.5, 0, 1, -8),
+			Size = UDim2.fromOffset(math.max(16, size - 16), math.max(9, size // 4)),
+			ZIndex = zIndex + 2,
+			Parent = shell,
+		})
 	end
 end
 
@@ -1010,10 +924,12 @@ local function renderIcon(parent: GuiObject, spec: any, size: number, position: 
 			task.delay(0.45, function()
 				if image.Parent and image.IsLoaded == false then
 					image:Destroy()
-					renderGeneratedIcon(parent, pack, name, size, zIndex, theme)
-					local rendered = parent:FindFirstChild("RenderedIcon")
-					if rendered and rendered:IsA("GuiObject") then
-						rendered.Position = position
+					if pack == "craft" then
+						renderGeneratedIcon(parent, pack, name, size, zIndex, theme)
+						local rendered = parent:FindFirstChild("RenderedIcon")
+						if rendered and rendered:IsA("GuiObject") then
+							rendered.Position = position
+						end
 					end
 				end
 			end)
@@ -1021,10 +937,12 @@ local function renderIcon(parent: GuiObject, spec: any, size: number, position: 
 		return
 	end
 
-	renderGeneratedIcon(parent, pack or "solar", name or "star", size, zIndex, theme)
-	local rendered = parent:FindFirstChild("RenderedIcon")
-	if rendered and rendered:IsA("GuiObject") then
-		rendered.Position = position
+	if pack == "craft" then
+		renderGeneratedIcon(parent, pack, name or "star", size, zIndex, theme)
+		local rendered = parent:FindFirstChild("RenderedIcon")
+		if rendered and rendered:IsA("GuiObject") then
+			rendered.Position = position
+		end
 	end
 end
 
@@ -1242,11 +1160,11 @@ function WindowUI:_buildTopbar()
 	self.TitleLabel = title
 	setText(title, theme.TopbarText or DEFAULT_THEME.TopbarText, 13, Enum.Font.GothamMedium)
 
-	self.UserButton = self:_createTopbarAction("UserAction", "solar:user-rounded-linear", -104, function()
+	self.UserButton = self:_createTopbarAction("UserAction", "solar:user-bold", -104, function()
 		self:OpenApp("__WindowUI_User")
 	end)
 
-	self.SettingsButton = self:_createTopbarAction("SettingsAction", "solar:settings-linear", -70, function()
+	self.SettingsButton = self:_createTopbarAction("SettingsAction", "solar:settings-bold", -70, function()
 		self:OpenApp("__WindowUI_Settings")
 	end)
 
@@ -1696,11 +1614,11 @@ function WindowUI:_refreshThemeVisuals()
 	end
 	if self.UserButton then
 		self.UserButton.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
-		renderIcon(self.UserButton, "solar:user-rounded-linear", 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
+		renderIcon(self.UserButton, "solar:user-bold", 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
 	end
 	if self.SettingsButton then
 		self.SettingsButton.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
-		renderIcon(self.SettingsButton, "solar:settings-linear", 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
+		renderIcon(self.SettingsButton, "solar:settings-bold", 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
 	end
 
 	for _, descendant in ipairs(self.Window:GetDescendants()) do
@@ -1773,7 +1691,7 @@ function WindowUI:_buildSystemPages()
 		{
 			Id = "__WindowUI_Settings",
 			Name = "Settings",
-			Icon = "solar:settings-linear",
+			Icon = "solar:settings-bold",
 			Order = -999,
 		} :: any,
 		false
@@ -1819,7 +1737,7 @@ function WindowUI:_buildSystemPages()
 		{
 			Id = "__WindowUI_User",
 			Name = "User",
-			Icon = "solar:user-rounded-linear",
+			Icon = "solar:user-bold",
 			Order = -998,
 		} :: any,
 		false
@@ -1944,7 +1862,7 @@ function WindowUI:OpenApp(appName: string)
 	self._activeContent.Parent = self.ContentScroll
 	self.AppTitle.Text = app.Name
 	self.AppIcon.Visible = true
-	renderIcon(self.AppIcon, app.Icon or "solar:star-linear", 26, UDim2.new(0.5, 0, 0, 0), 4, self._theme)
+	renderIcon(self.AppIcon, app.Icon or "solar:star-bold", 26, UDim2.new(0.5, 0, 0, 0), 4, self._theme)
 
 	local backgroundImage = app.BackgroundImage or self:_getDefaultBackground()
 	self.AppBackground.Image = backgroundImage or ""
@@ -2133,7 +2051,7 @@ function App:_createTile()
 		})
 	end
 
-	renderIcon(tile, self.Icon or "solar:star-linear", 30, UDim2.new(0.5, 0, 0, 10), 5, theme)
+	renderIcon(tile, self.Icon or "solar:star-bold", 30, UDim2.new(0.5, 0, 0, 10), 5, theme)
 
 	local label = create("TextLabel", {
 		Name = "Name",

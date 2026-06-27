@@ -51,7 +51,7 @@ local ui = WindowUI.new({
 
 local app = ui:CreateApp({
 	Name = "Home",
-	Icon = "solar:settings-linear",
+	Icon = "solar:settings-bold",
 	BackgroundImage = DEFAULT_BACKGROUND,
 	TileImage = DEFAULT_BACKGROUND,
 	StartOpen = true,
@@ -124,15 +124,15 @@ Icon formats:
 
 ```lua
 Icon = "rbxassetid://123456"
-Icon = "solar:settings-linear"
-Icon = "solar:settings" -- auto thử settings/settings-linear/settings-outline/settings-broken
+Icon = "solar:settings-bold"
+Icon = "solar:settings" -- auto thử settings/settings-bold/settings-linear/settings-outline/settings-broken
 Icon = "craft:tools"
 Icon = "https://example.com/icon.png"
-Icon = { Pack = "Solar", Name = "user-rounded-linear" }
+Icon = { Pack = "Solar", Name = "user-bold" }
 Icon = { Pack = "Craft", Name = "shield" }
 ```
 
-Solar icon dùng Iconify API theo collection `solar`. Craft icon trong executor được render bằng fallback shape local để không phụ thuộc Figma runtime.
+Solar icon dùng Iconify API dạng `https://api.iconify.design/solar:settings-bold.svg`, sau đó render SVG thành PNG và cache bằng `writefile/getcustomasset`. Craft icon trong executor vẫn có fallback shape local để không phụ thuộc Figma runtime.
 
 ### App Controls
 

@@ -28,7 +28,7 @@ local ui = WindowUI.new({
 
 local home = ui:CreateApp({
 	Name = "Home",
-	Icon = "solar:settings-linear",
+	Icon = "solar:settings-bold",
 	BackgroundImage = DEFAULT_BACKGROUND,
 	TileImage = DEFAULT_BACKGROUND,
 	StartOpen = true,
@@ -81,7 +81,7 @@ tools:AddDropdown({
 
 local profile = ui:CreateApp({
 	Name = "Profile",
-	Icon = "solar:user-rounded-linear",
+	Icon = "solar:user-bold",
 	Order = 3,
 })
 
