@@ -8,15 +8,16 @@ Roblox Luau UI library kiểu floating window cho executor LocalScript. Bản n�
 - Topbar có title và nút `-`; bấm `-` sẽ hide window. Khi window hide, nút TopbarPlus/fallback hiện; bấm nút đó thì window hiện lại và nút tự ẩn.
 - Topbar trong window có nút User và Settings; Settings có chọn theme, DPI và toggle background.
 - App ở màn hình chính là tile kiểu Windows: icon ở trên, tên app ở dưới, có thể dùng image background.
-- Home/Tabs, App page và tile fallback dùng background sọc đen generate sẵn ở [assets/dark-stripe-background.jpg](assets/dark-stripe-background.jpg).
+- Home/Tabs, App page và tile fallback dùng background sọc đen generate sẵn ở [assets/dark-stripe-background.jpg](assets/dark-stripe-background.jpg); page background được render mờ/transparency để không lấn nội dung.
+- Topbar window có overlay liquid-glass generate sẵn ở [assets/liquid-glass-topbar.jpg](assets/liquid-glass-topbar.jpg).
 - Giữ app tile sẽ shrink nhẹ và hiện stroke gradient highlight.
 - Bấm app sẽ đổi cùng float window sang page của app đó, không mở thêm window riêng.
-- Window hide sẽ co page còn topbar, rồi topbar thu nhỏ và chạy về vị trí TopbarPlus theo `Align`.
+- Window hide sẽ co page còn topbar, rồi topbar thu nhỏ và chạy về vị trí TopbarPlus theo `Align`; page/app transition có slide, scale và background fade.
 - Toggle, slider và dropdown có animation khi đổi trạng thái.
 - Có nút back icon-only dùng Solar icon PNG/fallback để quay lại app grid.
 - Kéo topbar để di chuyển window, tự co layout cho mobile.
 - Hỗ trợ icon dạng `solar:<name>`, `craft:<name>`, URL ảnh, `rbxassetid://...`.
-- Nếu executor có `writefile`, `readfile`, `getcustomasset`, library sẽ cache icon Windows topbar và icon URL/Iconify về file local.
+- Nếu executor có `writefile`, `readfile`, `getcustomasset`, library sẽ cache icon Windows topbar, liquid-glass texture và icon URL/Iconify về file local.
 - Tự dùng `UIShadow` nếu client hỗ trợ shadow mới của Roblox.
 - Tự tạo nút TopbarPlus theo docs của `tanhoangviet/ToolForLua`, nhưng không gọi `modifyTheme` để giữ theme TopbarPlus nguyên bản.
 - Nếu môi trường không hỗ trợ `loadstring/HttpGet` hoặc bạn tắt TopbarPlus, library sẽ vẽ fallback icon Windows nền đen, icon trắng.
@@ -113,6 +114,10 @@ Trả về `getcustomasset` path của tile background sọc đen generate sẵn
 ### `WindowUI.GetPageBackground()`
 
 Trả về `getcustomasset` path của page background sọc đen dùng cho Home/Tabs và App page.
+
+### `WindowUI.GetTopbarGlass()`
+
+Trả về `getcustomasset` path của liquid-glass topbar texture generate sẵn.
 
 ### `ui:CreateApp(config)`
 

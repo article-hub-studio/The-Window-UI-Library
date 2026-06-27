@@ -273,6 +273,8 @@ local DEFAULT_TOPBARPLUS_SOURCE =
 	"https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"
 local DEFAULT_BACKGROUND_URL =
 	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/dark-stripe-background.jpg"
+local DEFAULT_TOPBAR_GLASS_URL =
+	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/liquid-glass-topbar.jpg"
 
 local DEFAULT_THEME = {
 	Accent = Color3.fromRGB(88, 101, 242),
@@ -352,6 +354,8 @@ local TWEEN_SOFT = TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirect
 local TWEEN_WINDOW_IN = TweenInfo.new(0.42, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local TWEEN_WINDOW_OUT = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
 local TWEEN_BODY_OUT = TweenInfo.new(0.14, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+local TWEEN_SHEEN = TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local PAGE_BACKGROUND_TRANSPARENCY = 0.58
 
 local function getPlayerGui(): Instance
 	if LOCAL_PLAYER then
@@ -721,6 +725,8 @@ end
 
 local cachedDefaultBackground: string? = nil
 local triedDefaultBackground = false
+local cachedTopbarGlass: string? = nil
+local triedTopbarGlass = false
 
 local function getDefaultBackgroundAsset(): string?
 	if triedDefaultBackground then
@@ -742,6 +748,20 @@ end
 
 function WindowUI.GetPageBackground(): string?
 	return getPageBackgroundAsset()
+end
+
+local function getTopbarGlassAsset(): string?
+	if triedTopbarGlass then
+		return cachedTopbarGlass
+	end
+
+	triedTopbarGlass = true
+	cachedTopbarGlass = urlAsset(DEFAULT_TOPBAR_GLASS_URL, "WindowUILibrary/backgrounds/liquid_glass_topbar.jpg")
+	return cachedTopbarGlass
+end
+
+function WindowUI.GetTopbarGlass(): string?
+	return getTopbarGlassAsset()
 end
 
 local function resolveIcon(spec: any, color: Color3): (string?, string?, string?)
@@ -1218,6 +1238,7 @@ function WindowUI:_createTopbarAction(name: string, iconSpec: IconConfig, xOffse
 		Name = name,
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar,
+		BackgroundTransparency = 0.58,
 		BorderSizePixel = 0,
 		Position = UDim2.new(1, xOffset, 0, 0),
 		Size = UDim2.fromOffset(34, 36),
@@ -1237,17 +1258,112 @@ function WindowUI:_createTopbarAction(name: string, iconSpec: IconConfig, xOffse
 	return button
 end
 
+function WindowUI:_startTopbarSheen()
+	if self._topbarSheenRunning or not self.TopbarSheenGradient then
+		return
+	end
+
+	self._topbarSheenRunning = true
+	task.spawn(function()
+		while not self._destroyed and self.TopbarSheenGradient do
+			self.TopbarSheenGradient.Offset = Vector2.new(-1.15, 0)
+			tween(self.TopbarSheenGradient, TWEEN_SHEEN, { Offset = Vector2.new(1.15, 0) })
+			task.wait(4.2)
+		end
+	end)
+end
+
 function WindowUI:_buildTopbar()
 	local theme = self._theme
 
 	self.Topbar = create("Frame", {
 		Name = "Topbar",
 		BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar,
+		BackgroundTransparency = 0.08,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		Size = UDim2.new(1, 0, 0, 36),
 		ZIndex = 10,
 		Parent = self.Window,
 	}) :: Frame
+
+	local glassTexture = getTopbarGlassAsset()
+	self.TopbarGlass = create("ImageLabel", {
+		Name = "LiquidGlass",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = glassTexture or "",
+		ImageTransparency = 0.5,
+		ScaleType = Enum.ScaleType.Crop,
+		Size = UDim2.fromScale(1, 1),
+		Visible = glassTexture ~= nil,
+		ZIndex = 10,
+		Parent = self.Topbar,
+	}) :: ImageLabel
+
+	self.TopbarTint = create("Frame", {
+		Name = "GlassTint",
+		BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar,
+		BackgroundTransparency = 0.38,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 10,
+		Parent = self.Topbar,
+	}) :: Frame
+
+	local topbarHighlight = create("Frame", {
+		Name = "GlassHighlight",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.92,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 1),
+		Size = UDim2.new(1, 0, 0, 12),
+		ZIndex = 10,
+		Parent = self.Topbar,
+	}) :: Frame
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.52, Color3.fromRGB(130, 190, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+		}),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 0.42),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Rotation = 0,
+		Parent = topbarHighlight,
+	})
+
+	local topbarSheen = create("Frame", {
+		Name = "GlassSheen",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.88,
+		BorderSizePixel = 0,
+		Position = UDim2.fromScale(-0.2, 0),
+		Size = UDim2.new(1.4, 0, 1, 0),
+		ZIndex = 10,
+		Parent = self.Topbar,
+	}) :: Frame
+	self.TopbarSheenGradient = create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(170, 220, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+		}),
+		Offset = Vector2.new(-1.15, 0),
+		Rotation = 18,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.48, 0.86),
+			NumberSequenceKeypoint.new(0.52, 0.55),
+			NumberSequenceKeypoint.new(0.56, 0.88),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = topbarSheen,
+	}) :: UIGradient
+	self:_startTopbarSheen()
 
 	local title = create("TextLabel", {
 		Name = "Title",
@@ -1274,6 +1390,7 @@ function WindowUI:_buildTopbar()
 		Name = "Minimize",
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar,
+		BackgroundTransparency = 0.58,
 		BorderSizePixel = 0,
 		Position = UDim2.new(1, -36, 0, 0),
 		Size = UDim2.fromOffset(36, 36),
@@ -1323,13 +1440,18 @@ function WindowUI:_buildBody()
 		Visible = true,
 		Parent = self.Body,
 	}) :: Frame
+	create("UIScale", {
+		Name = "PageMotionScale",
+		Scale = 1,
+		Parent = self.HomePage,
+	})
 
 	self.HomeBackground = create("ImageLabel", {
 		Name = "HomeBackground",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Image = pageBackground or "",
-		ImageTransparency = 0.22,
+		ImageTransparency = PAGE_BACKGROUND_TRANSPARENCY,
 		ScaleType = Enum.ScaleType.Crop,
 		Size = UDim2.fromScale(1, 1),
 		Visible = pageBackground ~= nil,
@@ -1340,7 +1462,7 @@ function WindowUI:_buildBody()
 	local homeShade = create("Frame", {
 		Name = "HomeShade",
 		BackgroundColor3 = theme.Window or DEFAULT_THEME.Window,
-		BackgroundTransparency = 0.24,
+		BackgroundTransparency = 0.34,
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 1,
@@ -1353,8 +1475,8 @@ function WindowUI:_buildBody()
 		}),
 		Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0.08),
-			NumberSequenceKeypoint.new(0.58, 0.34),
-			NumberSequenceKeypoint.new(1, 0.14),
+			NumberSequenceKeypoint.new(0.58, 0.42),
+			NumberSequenceKeypoint.new(1, 0.2),
 		}),
 		Rotation = 115,
 		Parent = homeShade,
@@ -1401,13 +1523,18 @@ function WindowUI:_buildBody()
 		Visible = false,
 		Parent = self.Body,
 	}) :: Frame
+	create("UIScale", {
+		Name = "PageMotionScale",
+		Scale = 1,
+		Parent = self.AppPage,
+	})
 
 	self.AppPageBackground = create("ImageLabel", {
 		Name = "PageBackground",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Image = pageBackground or "",
-		ImageTransparency = 0.18,
+		ImageTransparency = PAGE_BACKGROUND_TRANSPARENCY,
 		ScaleType = Enum.ScaleType.Crop,
 		Size = UDim2.fromScale(1, 1),
 		Visible = pageBackground ~= nil,
@@ -1431,7 +1558,7 @@ function WindowUI:_buildBody()
 	local appShade = create("Frame", {
 		Name = "Shade",
 		BackgroundColor3 = theme.Window or DEFAULT_THEME.Window,
-		BackgroundTransparency = 0.18,
+		BackgroundTransparency = 0.28,
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 2,
@@ -1748,6 +1875,16 @@ end
 function WindowUI:_animatePage(page: GuiObject, offsetX: number)
 	page.Position = UDim2.fromOffset(offsetX, 0)
 	page.Visible = true
+	local pageScale = page:FindFirstChild("PageMotionScale")
+	if pageScale and pageScale:IsA("UIScale") then
+		pageScale.Scale = 0.975
+		tween(pageScale, TWEEN_SOFT, { Scale = 1 })
+	end
+	local pageBackground = page:FindFirstChild("HomeBackground") or page:FindFirstChild("PageBackground")
+	if pageBackground and pageBackground:IsA("ImageLabel") and pageBackground.Visible then
+		pageBackground.ImageTransparency = 1
+		tween(pageBackground, TWEEN_SOFT, { ImageTransparency = PAGE_BACKGROUND_TRANSPARENCY })
+	end
 	tween(page, TWEEN_SOFT, { Position = UDim2.fromOffset(0, 0) })
 end
 
@@ -1771,6 +1908,9 @@ function WindowUI:_refreshThemeVisuals()
 	end
 	if self.Topbar then
 		tween(self.Topbar, TWEEN_FAST, { BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar })
+	end
+	if self.TopbarTint then
+		tween(self.TopbarTint, TWEEN_FAST, { BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar })
 	end
 	if self.TitleLabel then
 		self.TitleLabel.TextColor3 = theme.TopbarText or DEFAULT_THEME.TopbarText
@@ -1911,10 +2051,12 @@ function WindowUI:_buildSystemPages()
 			local pageBackground = self:_getPageBackground()
 			if self.HomeBackground then
 				self.HomeBackground.Image = pageBackground or ""
+				self.HomeBackground.ImageTransparency = PAGE_BACKGROUND_TRANSPARENCY
 				self.HomeBackground.Visible = pageBackground ~= nil
 			end
 			if self.AppPageBackground then
 				self.AppPageBackground.Image = pageBackground or ""
+				self.AppPageBackground.ImageTransparency = PAGE_BACKGROUND_TRANSPARENCY
 				self.AppPageBackground.Visible = pageBackground ~= nil
 			end
 		end,
@@ -1962,7 +2104,9 @@ function WindowUI.new(config: WindowConfig?)
 		_theme = mergeTheme(resolvedConfig.Theme),
 		_topbarIcon = nil,
 		_topbarAlign = "Center",
+		_topbarSheenRunning = false,
 		_syncingTopbar = false,
+		_destroyed = false,
 		_usePageBackground = true,
 		_wasDragged = false,
 		_windowBaseScale = resolvedConfig.Scale or 0.94,
@@ -2194,6 +2338,7 @@ function WindowUI:CreateApp(config: AppConfig)
 end
 
 function WindowUI:Destroy()
+	self._destroyed = true
 	if self._topbarIcon then
 		local destroy = self._topbarIcon.destroy
 		if type(destroy) == "function" then
@@ -2356,7 +2501,16 @@ function App:CreateSection(title: string): Frame
 		ZIndex = 5,
 		Parent = self.Content,
 	}) :: Frame
-	addStroke(section, theme.Stroke or DEFAULT_THEME.Stroke, 0.64, 1)
+	addCorner(section, UDim.new(0, 10))
+	addStroke(section, theme.Stroke or DEFAULT_THEME.Stroke, 0.58, 1)
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong),
+			ColorSequenceKeypoint.new(1, theme.Surface or DEFAULT_THEME.Surface),
+		}),
+		Rotation = 90,
+		Parent = section,
+	})
 	addPadding(section, 10, 8, 10, 10)
 	addList(section, 7)
 
@@ -2407,7 +2561,16 @@ function App:AddButton(config: ButtonConfig, parent: GuiObject?): TextButton
 		Parent = self:_resolveParent(parent),
 	}) :: TextButton
 	button.TextXAlignment = Enum.TextXAlignment.Center
-	addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.62, 1)
+	addCorner(button, UDim.new(0, 9))
+	addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.58, 1)
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.ButtonHover or DEFAULT_THEME.ButtonHover),
+			ColorSequenceKeypoint.new(1, theme.Button or DEFAULT_THEME.Button),
+		}),
+		Rotation = 90,
+		Parent = button,
+	})
 	bindButtonMotion(
 		self._library,
 		button,
@@ -2721,6 +2884,7 @@ function App:AddTextBox(config: TextBoxConfig, parent: GuiObject?): Frame
 		Parent = row,
 	}) :: TextBox
 	box.TextXAlignment = Enum.TextXAlignment.Left
+	addCorner(box, UDim.new(0, 8))
 	addPadding(box, 10, 0, 10, 0)
 	addStroke(box, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
 
