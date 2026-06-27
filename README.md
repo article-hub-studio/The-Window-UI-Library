@@ -6,10 +6,13 @@ Roblox Luau UI library kiểu floating window cho executor LocalScript. Bản n�
 - Ưu tiên parent GUI bằng `gethui()`, fallback `CoreGui`, và gọi `protectgui`/`syn.protect_gui` nếu có.
 - Theme mặc định kiểu Discord dark, một float window đơn giản, không dùng `UICorner`, DPI gọn hơn qua `Scale`.
 - Topbar có title và nút `-`; bấm `-` sẽ hide window. Khi window hide, nút TopbarPlus/fallback hiện; bấm nút đó thì window hiện lại và nút tự ẩn.
+- Topbar trong window có nút User và Settings; Settings có chọn theme, DPI và toggle background.
 - App ở màn hình chính là tile kiểu Windows: icon ở trên, tên app ở dưới, có thể dùng image background.
+- Nếu app không truyền background riêng, library dùng background sọc đen generate sẵn ở [assets/dark-stripe-background.jpg](assets/dark-stripe-background.jpg).
 - Giữ app tile sẽ shrink nhẹ và hiện stroke gradient highlight.
 - Bấm app sẽ đổi cùng float window sang page của app đó, không mở thêm window riêng.
 - Window show/hide và đổi page có animation chắc hơn bằng scale/slide tween.
+- Toggle và dropdown có animation khi đổi trạng thái.
 - Có nút back để quay lại app grid.
 - Kéo topbar để di chuyển window, tự co layout cho mobile.
 - Hỗ trợ icon dạng `solar:<name>`, `craft:<name>`, URL ảnh, `rbxassetid://...`.
@@ -24,7 +27,7 @@ Library không chứa executor, injection, remote exploit, bypass, hoặc logic 
 
 1. Dùng executor chạy [examples/demo.client.luau](examples/demo.client.luau).
 2. Example sẽ tự load library từ raw GitHub bằng `loadstring(game:HttpGet(...))()`.
-3. Thay `rbxassetid://0` bằng image asset id thật nếu muốn background riêng cho app.
+3. Background mặc định đã dùng ảnh sọc đen generate sẵn; bạn vẫn có thể truyền `BackgroundImage`/`TileImage` riêng nếu muốn.
 
 ## Ví Dụ Nhanh
 
@@ -32,6 +35,8 @@ Library không chứa executor, injection, remote exploit, bypass, hoặc logic 
 local WindowUI = loadstring(game:HttpGet(
 	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/src/WindowUILibrary.luau"
 ))()
+
+local DEFAULT_BACKGROUND = WindowUI.GetDefaultBackground()
 
 local ui = WindowUI.new({
 	Name = "MyWindowUI",
@@ -45,10 +50,10 @@ local ui = WindowUI.new({
 })
 
 local app = ui:CreateApp({
-	Name = "Settings",
+	Name = "Home",
 	Icon = "solar:settings-linear",
-	BackgroundImage = "rbxassetid://YOUR_BACKGROUND_ID",
-	TileImage = "rbxassetid://YOUR_TILE_BACKGROUND_ID",
+	BackgroundImage = DEFAULT_BACKGROUND,
+	TileImage = DEFAULT_BACKGROUND,
 	StartOpen = true,
 })
 
@@ -102,6 +107,10 @@ Library không modify theme TopbarPlus. Khi window đang mở, TopbarPlus icon s
 - `TopbarPlus: boolean | table?`
 - `Theme: table?`
 
+### `WindowUI.GetDefaultBackground()`
+
+Trả về `getcustomasset` path của background sọc đen generate sẵn nếu executor hỗ trợ `writefile/readfile/getcustomasset`.
+
 ### `ui:CreateApp(config)`
 
 - `Name: string`
@@ -123,7 +132,7 @@ Icon = { Pack = "Solar", Name = "user-rounded-linear" }
 Icon = { Pack = "Craft", Name = "shield" }
 ```
 
-Solar icon dùng Iconify API theo collection `solar`. Craft icon trong executor được render bằng fallback shape/glyph local để không phụ thuộc Figma runtime.
+Solar icon dùng Iconify API theo collection `solar`. Craft icon trong executor được render bằng fallback shape local để không phụ thuộc Figma runtime.
 
 ### App Controls
 

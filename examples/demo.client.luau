@@ -6,7 +6,7 @@ local WindowUI = loadstring(
 	)
 )()
 
-local PLACEHOLDER_IMAGE = "rbxassetid://0"
+local DEFAULT_BACKGROUND = WindowUI.GetDefaultBackground()
 
 local ui = WindowUI.new({
 	Name = "ExecutorFloatWindow",
@@ -27,10 +27,10 @@ local ui = WindowUI.new({
 })
 
 local home = ui:CreateApp({
-	Name = "Settings",
+	Name = "Home",
 	Icon = "solar:settings-linear",
-	BackgroundImage = PLACEHOLDER_IMAGE,
-	TileImage = PLACEHOLDER_IMAGE,
+	BackgroundImage = DEFAULT_BACKGROUND,
+	TileImage = DEFAULT_BACKGROUND,
 	StartOpen = true,
 	Order = 1,
 })
@@ -58,8 +58,8 @@ home:AddSlider({
 local tools = ui:CreateApp({
 	Name = "Tools",
 	Icon = "craft:tools",
-	BackgroundImage = PLACEHOLDER_IMAGE,
-	TileImage = PLACEHOLDER_IMAGE,
+	BackgroundImage = DEFAULT_BACKGROUND,
+	TileImage = DEFAULT_BACKGROUND,
 	Order = 2,
 })
 

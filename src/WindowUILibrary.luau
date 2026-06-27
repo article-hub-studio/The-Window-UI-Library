@@ -75,6 +75,14 @@ local function tryMakeFolder(path: string)
 	pcall(makefolder, path)
 end
 
+local function tryMakeFolderPath(path: string)
+	local current = ""
+	for segment in path:gmatch("[^/]+") do
+		current = if current == "" then segment else current .. "/" .. segment
+		tryMakeFolder(current)
+	end
+end
+
 local function writeExecutorAsset(path: string, content: string): string?
 	local writefile = getGlobal("writefile")
 	local readfile = getGlobal("readfile")
@@ -85,8 +93,10 @@ local function writeExecutorAsset(path: string, content: string): string?
 		return nil
 	end
 
-	tryMakeFolder("WindowUILibrary")
-	tryMakeFolder("WindowUILibrary/icons")
+	local folder = path:match("^(.*)/[^/]+$")
+	if folder then
+		tryMakeFolderPath(folder)
+	end
 
 	local shouldWrite = true
 	if type(isfile) == "function" then
@@ -255,6 +265,8 @@ type ConnectionList = { RBXScriptConnection }
 
 local DEFAULT_TOPBARPLUS_SOURCE =
 	"https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"
+local DEFAULT_BACKGROUND_URL =
+	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/dark-stripe-background.jpg"
 
 local DEFAULT_THEME = {
 	Accent = Color3.fromRGB(88, 101, 242),
@@ -272,6 +284,61 @@ local DEFAULT_THEME = {
 	Stroke = Color3.fromRGB(64, 66, 73),
 	Shadow = Color3.fromRGB(18, 19, 22),
 	Danger = Color3.fromRGB(255, 91, 91),
+}
+
+local THEME_PRESETS: { [string]: Theme } = {
+	["Discord Dark"] = DEFAULT_THEME,
+	Midnight = {
+		Accent = Color3.fromRGB(79, 129, 255),
+		Window = Color3.fromRGB(24, 27, 33),
+		Topbar = Color3.fromRGB(15, 17, 22),
+		TopbarText = Color3.fromRGB(245, 247, 255),
+		Surface = Color3.fromRGB(31, 35, 43),
+		SurfaceStrong = Color3.fromRGB(42, 47, 58),
+		Tile = Color3.fromRGB(31, 35, 43),
+		TileHover = Color3.fromRGB(48, 55, 68),
+		Button = Color3.fromRGB(42, 47, 58),
+		ButtonHover = Color3.fromRGB(56, 64, 80),
+		Text = Color3.fromRGB(245, 247, 255),
+		MutedText = Color3.fromRGB(170, 179, 194),
+		Stroke = Color3.fromRGB(59, 66, 82),
+		Shadow = Color3.fromRGB(7, 9, 13),
+		Danger = Color3.fromRGB(255, 91, 91),
+	},
+	Graphite = {
+		Accent = Color3.fromRGB(120, 132, 150),
+		Window = Color3.fromRGB(39, 40, 43),
+		Topbar = Color3.fromRGB(25, 26, 28),
+		TopbarText = Color3.fromRGB(242, 242, 244),
+		Surface = Color3.fromRGB(48, 49, 53),
+		SurfaceStrong = Color3.fromRGB(60, 62, 67),
+		Tile = Color3.fromRGB(48, 49, 53),
+		TileHover = Color3.fromRGB(66, 68, 74),
+		Button = Color3.fromRGB(60, 62, 67),
+		ButtonHover = Color3.fromRGB(76, 78, 86),
+		Text = Color3.fromRGB(242, 242, 244),
+		MutedText = Color3.fromRGB(176, 179, 187),
+		Stroke = Color3.fromRGB(75, 77, 84),
+		Shadow = Color3.fromRGB(12, 13, 15),
+		Danger = Color3.fromRGB(255, 91, 91),
+	},
+	Amoled = {
+		Accent = Color3.fromRGB(88, 101, 242),
+		Window = Color3.fromRGB(8, 8, 10),
+		Topbar = Color3.fromRGB(0, 0, 0),
+		TopbarText = Color3.fromRGB(245, 245, 245),
+		Surface = Color3.fromRGB(14, 15, 18),
+		SurfaceStrong = Color3.fromRGB(25, 26, 30),
+		Tile = Color3.fromRGB(14, 15, 18),
+		TileHover = Color3.fromRGB(33, 35, 42),
+		Button = Color3.fromRGB(25, 26, 30),
+		ButtonHover = Color3.fromRGB(42, 44, 52),
+		Text = Color3.fromRGB(245, 245, 245),
+		MutedText = Color3.fromRGB(168, 171, 180),
+		Stroke = Color3.fromRGB(45, 47, 54),
+		Shadow = Color3.fromRGB(0, 0, 0),
+		Danger = Color3.fromRGB(255, 91, 91),
+	},
 }
 
 local TWEEN_FAST = TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -521,69 +588,6 @@ local function trimIconVariant(name: string): string
 	return cleaned
 end
 
-local SOLAR_GLYPHS = {
-	settings = "⚙",
-	tools = "✦",
-	tool = "✦",
-	home = "⌂",
-	search = "⌕",
-	folder = "▱",
-	file = "□",
-	terminal = "▸",
-	code = "<>",
-	user = "◌",
-	profile = "◌",
-	notification = "•",
-	bell = "•",
-	calendar = "□",
-	chat = "◍",
-	message = "◍",
-	graph = "⌁",
-	chart = "⌁",
-	shield = "◇",
-	lock = "□",
-	star = "✧",
-	rocket = "△",
-	sun = "☼",
-	moon = "◐",
-}
-
-local CRAFT_GLYPHS = {
-	settings = "▣",
-	tools = "◆",
-	tool = "◆",
-	home = "⌂",
-	folder = "▰",
-	terminal = "▸",
-	code = "{}",
-	user = "●",
-	profile = "●",
-	notification = "▪",
-	bell = "▪",
-	calendar = "▤",
-	chat = "▥",
-	message = "▥",
-	graph = "▧",
-	chart = "▧",
-	shield = "◈",
-	star = "✦",
-	sun = "✧",
-	moon = "◒",
-}
-
-local function getGlyph(pack: string, name: string): string
-	local cleaned = trimIconVariant(name)
-	local source = if pack == "craft" then CRAFT_GLYPHS else SOLAR_GLYPHS
-
-	for key, glyph in pairs(source) do
-		if cleaned:find(key, 1, true) then
-			return glyph
-		end
-	end
-
-	return if pack == "craft" then "▣" else "✦"
-end
-
 local function getIconKind(pack: string, name: string): string
 	local cleaned = trimIconVariant(name)
 	for _, key in ipairs({
@@ -646,10 +650,33 @@ local function iconifyAsset(prefix: string, name: string, color: Color3): string
 	return nil
 end
 
-local function urlAsset(url: string): string?
+local function urlAsset(url: string, cachePath: string?): string?
 	local extension = url:match("%.([%w]+)%??[^/]*$")
 	if extension ~= "png" and extension ~= "jpg" and extension ~= "jpeg" and extension ~= "svg" then
 		extension = "png"
+	end
+
+	local path = cachePath or ("WindowUILibrary/icons/url_%s.%s"):format(sanitizeFileName(url), extension)
+	local isfile = getGlobal("isfile")
+	local readfile = getGlobal("readfile")
+	local getcustomasset = getGlobal("getcustomasset") or getGlobal("getsynasset")
+	if type(getcustomasset) == "function" then
+		local cached = false
+		if type(isfile) == "function" then
+			local ok, exists = pcall(isfile, path)
+			cached = ok and exists
+		end
+		if not cached and type(readfile) == "function" then
+			local ok, current = pcall(readfile, path)
+			cached = ok and type(current) == "string" and #current > 0
+		end
+
+		if cached then
+			local assetOk, asset = pcall(getcustomasset, path)
+			if assetOk and type(asset) == "string" then
+				return asset
+			end
+		end
 	end
 
 	local ok, content = pcall(function()
@@ -659,8 +686,24 @@ local function urlAsset(url: string): string?
 		return nil
 	end
 
-	local path = ("WindowUILibrary/icons/url_%s.%s"):format(sanitizeFileName(url), extension)
 	return writeExecutorAsset(path, content)
+end
+
+local cachedDefaultBackground: string? = nil
+local triedDefaultBackground = false
+
+local function getDefaultBackgroundAsset(): string?
+	if triedDefaultBackground then
+		return cachedDefaultBackground
+	end
+
+	triedDefaultBackground = true
+	cachedDefaultBackground = urlAsset(DEFAULT_BACKGROUND_URL, "WindowUILibrary/backgrounds/dark_stripe_background.jpg")
+	return cachedDefaultBackground
+end
+
+function WindowUI.GetDefaultBackground(): string?
+	return getDefaultBackgroundAsset()
 end
 
 local function resolveIcon(spec: any, color: Color3): (string?, string?, string?)
@@ -842,24 +885,99 @@ local function renderGeneratedIcon(
 				Parent = shell,
 			})
 		end
+	else
+		local accent = theme.Text or DEFAULT_THEME.Text
+		local kind = getIconKind(pack, name)
+		if kind == "settings" or kind == "tool" then
+			for index, rotation in ipairs({ 0, 45, 90, 135 }) do
+				create("Frame", {
+					Name = "SolarGearRay" .. index,
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					BackgroundColor3 = accent,
+					BorderSizePixel = 0,
+					Position = UDim2.fromScale(0.5, 0.5),
+					Rotation = rotation,
+					Size = UDim2.fromOffset(size - 12, 2),
+					ZIndex = zIndex + 1,
+					Parent = shell,
+				})
+			end
+			create("Frame", {
+				Name = "SolarGearCore",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = theme.Window or DEFAULT_THEME.Window,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(math.max(8, size // 3), math.max(8, size // 3)),
+				ZIndex = zIndex + 2,
+				Parent = shell,
+			})
+		elseif kind == "user" or kind == "profile" then
+			create("Frame", {
+				Name = "SolarUserHead",
+				AnchorPoint = Vector2.new(0.5, 0),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.new(0.5, 0, 0, 8),
+				Size = UDim2.fromOffset(math.max(8, size // 4), math.max(8, size // 4)),
+				ZIndex = zIndex + 1,
+				Parent = shell,
+			})
+			create("Frame", {
+				Name = "SolarUserBody",
+				AnchorPoint = Vector2.new(0.5, 1),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.new(0.5, 0, 1, -8),
+				Size = UDim2.fromOffset(math.max(16, size - 16), math.max(8, size // 5)),
+				ZIndex = zIndex + 1,
+				Parent = shell,
+			})
+		elseif kind == "folder" or kind == "calendar" then
+			create("Frame", {
+				Name = "SolarPanelTop",
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(7, 9),
+				Size = UDim2.fromOffset(size - 14, 4),
+				ZIndex = zIndex + 1,
+				Parent = shell,
+			})
+			create("Frame", {
+				Name = "SolarPanelBody",
+				BackgroundColor3 = accent,
+				BackgroundTransparency = 0.18,
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(7, 16),
+				Size = UDim2.fromOffset(size - 14, size - 24),
+				ZIndex = zIndex + 1,
+				Parent = shell,
+			})
+		else
+			create("Frame", {
+				Name = "SolarMarkA",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(0.5, 0.5),
+				Rotation = 45,
+				Size = UDim2.fromOffset(size - 14, 3),
+				ZIndex = zIndex + 1,
+				Parent = shell,
+			})
+			create("Frame", {
+				Name = "SolarMarkB",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(0.5, 0.5),
+				Rotation = -45,
+				Size = UDim2.fromOffset(size - 14, 3),
+				ZIndex = zIndex + 1,
+				Parent = shell,
+			})
+		end
 	end
-
-	local glyph = create("TextLabel", {
-		Name = "Glyph",
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Size = UDim2.fromScale(1, 1),
-		Text = getGlyph(pack, name),
-		TextColor3 = if pack == "craft"
-			then (theme.Window or DEFAULT_THEME.Window)
-			else (theme.Text or DEFAULT_THEME.Text),
-		TextSize = if size <= 30 then 16 else 20,
-		Font = Enum.Font.GothamMedium,
-		ZIndex = zIndex + 2,
-		Parent = shell,
-	}) :: TextLabel
-	glyph.TextXAlignment = Enum.TextXAlignment.Center
-	glyph.TextYAlignment = Enum.TextYAlignment.Center
 end
 
 local function renderIcon(parent: GuiObject, spec: any, size: number, position: UDim2, zIndex: number, theme: Theme)
@@ -1074,6 +1192,31 @@ function WindowUI:_buildRoot()
 	})
 end
 
+function WindowUI:_createTopbarAction(name: string, iconSpec: IconConfig, xOffset: number, callback: () -> ())
+	local theme = self._theme
+	local button = create("TextButton", {
+		Name = name,
+		AutoButtonColor = false,
+		BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar,
+		BorderSizePixel = 0,
+		Position = UDim2.new(1, xOffset, 0, 0),
+		Size = UDim2.fromOffset(34, 36),
+		Text = "",
+		ZIndex = 12,
+		Parent = self.Topbar,
+	}) :: TextButton
+	renderIcon(button, iconSpec, 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
+	bindButtonMotion(
+		self,
+		button,
+		theme.Topbar or DEFAULT_THEME.Topbar,
+		theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong,
+		theme.Button or DEFAULT_THEME.Button
+	)
+	self:_track(button.MouseButton1Click:Connect(callback))
+	return button
+end
+
 function WindowUI:_buildTopbar()
 	local theme = self._theme
 
@@ -1090,13 +1233,22 @@ function WindowUI:_buildTopbar()
 		Name = "Title",
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(14, 0),
-		Size = UDim2.new(1, -74, 1, 0),
+		Size = UDim2.new(1, -142, 1, 0),
 		Text = self.Title,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 11,
 		Parent = self.Topbar,
 	}) :: TextLabel
+	self.TitleLabel = title
 	setText(title, theme.TopbarText or DEFAULT_THEME.TopbarText, 13, Enum.Font.GothamMedium)
+
+	self.UserButton = self:_createTopbarAction("UserAction", "solar:user-rounded-linear", -104, function()
+		self:OpenApp("__WindowUI_User")
+	end)
+
+	self.SettingsButton = self:_createTopbarAction("SettingsAction", "solar:settings-linear", -70, function()
+		self:OpenApp("__WindowUI_Settings")
+	end)
 
 	self.MinimizeButton = create("TextButton", {
 		Name = "Minimize",
@@ -1518,6 +1670,177 @@ function WindowUI:_animatePage(page: GuiObject, offsetX: number)
 	tween(page, TWEEN_SOFT, { Position = UDim2.fromOffset(0, 0) })
 end
 
+function WindowUI:_getDefaultBackground(): string?
+	if self._useDefaultBackground == false then
+		return nil
+	end
+
+	return getDefaultBackgroundAsset()
+end
+
+function WindowUI:_refreshThemeVisuals()
+	local theme = self._theme
+
+	if self.Window then
+		tween(self.Window, TWEEN_FAST, { BackgroundColor3 = theme.Window or DEFAULT_THEME.Window })
+	end
+	if self.Topbar then
+		tween(self.Topbar, TWEEN_FAST, { BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar })
+	end
+	if self.TitleLabel then
+		self.TitleLabel.TextColor3 = theme.TopbarText or DEFAULT_THEME.TopbarText
+	end
+	if self.MinimizeButton then
+		self.MinimizeButton.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
+		self.MinimizeButton.TextColor3 = theme.TopbarText or DEFAULT_THEME.TopbarText
+	end
+	if self.UserButton then
+		self.UserButton.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
+		renderIcon(self.UserButton, "solar:user-rounded-linear", 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
+	end
+	if self.SettingsButton then
+		self.SettingsButton.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
+		renderIcon(self.SettingsButton, "solar:settings-linear", 18, UDim2.new(0.5, 0, 0, 9), 13, theme)
+	end
+
+	for _, descendant in ipairs(self.Window:GetDescendants()) do
+		if descendant:IsA("UIStroke") then
+			descendant.Color = theme.Stroke or DEFAULT_THEME.Stroke
+		elseif descendant:IsA("TextLabel") then
+			local textColor = theme.Text or DEFAULT_THEME.Text
+			if descendant == self.TitleLabel then
+				textColor = theme.TopbarText or DEFAULT_THEME.TopbarText
+			elseif descendant.Name == "Label" or descendant.Name == "Arrow" then
+				textColor = theme.MutedText or DEFAULT_THEME.MutedText
+			end
+			descendant.TextColor3 = textColor
+		elseif descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+			local gui = descendant :: GuiObject
+			if
+				descendant.Name == "Minimize"
+				or descendant.Name == "UserAction"
+				or descendant.Name == "SettingsAction"
+			then
+				gui.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
+			elseif descendant.Name:find("Tile", 1, true) then
+				gui.BackgroundColor3 = theme.Tile or DEFAULT_THEME.Tile
+			else
+				gui.BackgroundColor3 = theme.Button or DEFAULT_THEME.Button
+			end
+
+			if descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+				(descendant :: any).TextColor3 = if descendant.Name == "Minimize"
+					then (theme.TopbarText or DEFAULT_THEME.TopbarText)
+					else (theme.Text or DEFAULT_THEME.Text)
+			end
+		elseif descendant:IsA("Frame") then
+			if descendant.Name == "Topbar" then
+				descendant.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
+			elseif
+				descendant.Name:find("Section", 1, true)
+				or descendant.Name == "Dropdown"
+				or descendant.Name == "Slider"
+			then
+				descendant.BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface
+			elseif descendant.Name == "Options" then
+				descendant.BackgroundColor3 = theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
+			end
+		end
+	end
+end
+
+function WindowUI:SetThemePreset(name: string)
+	local preset = THEME_PRESETS[name]
+	if not preset then
+		warn(("[WindowUILibrary] theme '%s' does not exist."):format(name))
+		return
+	end
+
+	self._theme = mergeTheme(preset)
+	self:_refreshThemeVisuals()
+end
+
+function WindowUI:SetScale(scale: number)
+	self._windowBaseScale = math.clamp(scale, 0.82, 1)
+	self._config.Scale = self._windowBaseScale
+	if self.Window.Visible then
+		tween(self.WindowScale, TWEEN_SOFT, { Scale = self._windowBaseScale })
+	end
+end
+
+function WindowUI:_buildSystemPages()
+	local settings = self:_registerApp(
+		{
+			Id = "__WindowUI_Settings",
+			Name = "Settings",
+			Icon = "solar:settings-linear",
+			Order = -999,
+		} :: any,
+		false
+	)
+
+	local appearance = settings:CreateSection("Appearance")
+	settings:AddDropdown({
+		Text = "Theme",
+		Options = { "Discord Dark", "Midnight", "Graphite", "Amoled" },
+		Default = "Discord Dark",
+		Callback = function(value)
+			self:SetThemePreset(value)
+		end,
+	}, appearance)
+	settings:AddSlider({
+		Text = "DPI",
+		Min = 82,
+		Max = 100,
+		Default = math.floor(self._windowBaseScale * 100 + 0.5),
+		Step = 1,
+		Callback = function(value)
+			self:SetScale(value / 100)
+		end,
+	}, appearance)
+	settings:AddToggle({
+		Text = "Dark stripe background",
+		Default = true,
+		Callback = function(enabled)
+			self._useDefaultBackground = enabled
+			if self._activeApp and self._activeApp.BackgroundImage == nil then
+				local backgroundImage = self:_getDefaultBackground()
+				self.AppBackground.Image = backgroundImage or ""
+				self.AppBackground.Visible = backgroundImage ~= nil and backgroundImage ~= ""
+			end
+		end,
+	}, appearance)
+
+	local behavior = settings:CreateSection("Window")
+	settings:AddLabel("Topbar alignment: Center", behavior)
+	settings:AddLabel("TopbarPlus theme: untouched", behavior)
+
+	local user = self:_registerApp(
+		{
+			Id = "__WindowUI_User",
+			Name = "User",
+			Icon = "solar:user-rounded-linear",
+			Order = -998,
+		} :: any,
+		false
+	)
+
+	local profile = user:CreateSection("Profile")
+	local playerName = if LOCAL_PLAYER then LOCAL_PLAYER.Name else "Unknown"
+	local displayName = if LOCAL_PLAYER then LOCAL_PLAYER.DisplayName else "Unknown"
+	user:AddLabel("Username: " .. playerName, profile)
+	user:AddLabel("Display name: " .. displayName, profile)
+	user:AddButton({
+		Text = "Copy Username",
+		Callback = function()
+			local setclipboard = getGlobal("setclipboard")
+			if type(setclipboard) == "function" then
+				pcall(setclipboard, playerName)
+			end
+		end,
+	}, profile)
+end
+
 function WindowUI.new(config: WindowConfig?)
 	local resolvedConfig = config or {}
 	local self = setmetatable({
@@ -1530,6 +1853,7 @@ function WindowUI.new(config: WindowConfig?)
 		_theme = mergeTheme(resolvedConfig.Theme),
 		_topbarIcon = nil,
 		_syncingTopbar = false,
+		_useDefaultBackground = true,
 		_wasDragged = false,
 		_windowBaseScale = resolvedConfig.Scale or 0.94,
 		_visibleIntent = resolvedConfig.StartOpen ~= false,
@@ -1539,6 +1863,7 @@ function WindowUI.new(config: WindowConfig?)
 	self:_buildRoot()
 	self:_buildTopbar()
 	self:_buildBody()
+	self:_buildSystemPages()
 	self:_bindDrag()
 	self:_bindResponsiveLayout()
 	self:_setupTopbarPlus(resolvedConfig.TopbarPlus)
@@ -1621,7 +1946,7 @@ function WindowUI:OpenApp(appName: string)
 	self.AppIcon.Visible = true
 	renderIcon(self.AppIcon, app.Icon or "solar:star-linear", 26, UDim2.new(0.5, 0, 0, 0), 4, self._theme)
 
-	local backgroundImage = app.BackgroundImage
+	local backgroundImage = app.BackgroundImage or self:_getDefaultBackground()
 	self.AppBackground.Image = backgroundImage or ""
 	self.AppBackground.Visible = backgroundImage ~= nil and backgroundImage ~= ""
 
@@ -1646,10 +1971,13 @@ function WindowUI:_sortAppTiles()
 	end
 end
 
-function WindowUI:CreateApp(config: AppConfig)
+function WindowUI:_registerApp(config: AppConfig, createTile: boolean)
 	assert(type(config.Name) == "string" and config.Name ~= "", "CreateApp requires a non-empty Name.")
+	local configAny = config :: any
+	local appId = if type(configAny.Id) == "string" and configAny.Id ~= "" then configAny.Id else config.Name
 
 	local app = setmetatable({
+		Id = appId,
 		Name = config.Name,
 		Icon = config.Icon,
 		BackgroundImage = config.BackgroundImage,
@@ -1670,16 +1998,24 @@ function WindowUI:CreateApp(config: AppConfig)
 	}) :: Frame
 	addList(app.Content, 10)
 
-	table.insert(self._apps, app)
+	self._appByName[app.Id] = app
 	self._appByName[app.Name] = app
-	app:_createTile()
-	self:_sortAppTiles()
+
+	if createTile then
+		table.insert(self._apps, app)
+		app:_createTile()
+		self:_sortAppTiles()
+	end
 
 	if config.StartOpen then
-		self:OpenApp(app.Name)
+		self:OpenApp(app.Id)
 	end
 
 	return app
+end
+
+function WindowUI:CreateApp(config: AppConfig)
+	return self:_registerApp(config, true)
 end
 
 function WindowUI:Destroy()
@@ -1772,7 +2108,7 @@ function App:_createTile()
 		end
 	end))
 
-	local tileImage = self.TileImage or self.BackgroundImage
+	local tileImage = self.TileImage or self.BackgroundImage or library:_getDefaultBackground()
 	if tileImage and tileImage ~= "" then
 		create("ImageLabel", {
 			Name = "Background",
@@ -1817,7 +2153,7 @@ function App:_createTile()
 
 	self.Tile = tile
 	library:_track(tile.MouseButton1Click:Connect(function()
-		library:OpenApp(self.Name)
+		library:OpenApp(self.Id or self.Name)
 	end))
 end
 
@@ -1948,7 +2284,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		ZIndex = 7,
 		Parent = row,
 	}) :: TextButton
-	addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
+	local switchStroke = addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
 
 	local knob = create("Frame", {
 		Name = "Knob",
@@ -1959,12 +2295,29 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		ZIndex = 8,
 		Parent = button,
 	}) :: Frame
+	local knobScale = create("UIScale", {
+		Scale = 1,
+		Parent = knob,
+	}) :: UIScale
 
 	local function render(fire: boolean)
-		button.BackgroundColor3 = if enabled
-			then (theme.Accent or DEFAULT_THEME.Accent)
-			else (theme.Button or DEFAULT_THEME.Button)
-		knob.Position = if enabled then UDim2.new(1, -19, 0, 3) else UDim2.fromOffset(3, 3)
+		local activeTheme = self._library._theme
+		tween(button, TWEEN_FAST, {
+			BackgroundColor3 = if enabled
+				then (activeTheme.Accent or DEFAULT_THEME.Accent)
+				else (activeTheme.Button or DEFAULT_THEME.Button),
+		})
+		tween(switchStroke, TWEEN_FAST, {
+			Transparency = if enabled then 0.32 else 0.6,
+		})
+		tween(knob, TWEEN_SOFT, {
+			BackgroundColor3 = activeTheme.Text or DEFAULT_THEME.Text,
+			Position = if enabled then UDim2.new(1, -19, 0, 3) else UDim2.fromOffset(3, 3),
+		})
+		if fire then
+			knobScale.Scale = 0.84
+			tween(knobScale, TWEEN_SOFT, { Scale = 1 })
+		end
 		if fire then
 			safeValueCallback(config.Callback, enabled)
 		end
@@ -2183,6 +2536,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface,
 		BackgroundTransparency = 0.14,
 		BorderSizePixel = 0,
+		ClipsDescendants = false,
 		Size = UDim2.new(1, 0, 0, 64),
 		ZIndex = 6,
 		Parent = self:_resolveParent(parent),
@@ -2256,22 +2610,50 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 	}) :: Frame
 	addStroke(optionsFrame, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
 	addList(optionsFrame, 0)
+	local optionsScale = create("UIScale", {
+		Scale = 0.96,
+		Parent = optionsFrame,
+	}) :: UIScale
 
 	local optionButtons: { TextButton } = {}
 	local function paintOption(optionButton: TextButton, hovering: boolean)
+		local activeTheme = self._library._theme
 		local isSelected = optionButton.Text == selected
 		optionButton.BackgroundColor3 = if isSelected or hovering
-			then (theme.ButtonHover or DEFAULT_THEME.ButtonHover)
-			else (theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong)
+			then (activeTheme.ButtonHover or DEFAULT_THEME.ButtonHover)
+			else (activeTheme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong)
 		optionButton.TextColor3 = if isSelected
-			then (theme.Text or DEFAULT_THEME.Text)
-			else (theme.MutedText or DEFAULT_THEME.MutedText)
+			then (activeTheme.Text or DEFAULT_THEME.Text)
+			else (activeTheme.MutedText or DEFAULT_THEME.MutedText)
 	end
 
+	local renderId = 0
 	local function renderOpen()
-		optionsFrame.Visible = open
-		arrow.Text = if open then "^" else "v"
-		row.Size = if open then UDim2.new(1, 0, 0, 74 + (#options * 28)) else UDim2.new(1, 0, 0, 64)
+		renderId += 1
+		local currentRenderId = renderId
+		local activeTheme = self._library._theme
+		local optionHeight = #options * 28
+		optionsFrame.BackgroundColor3 = activeTheme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
+		arrow.Text = "v"
+		tween(arrow, TWEEN_FAST, { Rotation = if open then 180 else 0 })
+		tween(row, TWEEN_SOFT, {
+			Size = if open then UDim2.new(1, 0, 0, 74 + optionHeight) else UDim2.new(1, 0, 0, 64),
+		})
+		if open then
+			optionsFrame.Visible = true
+			optionsFrame.BackgroundTransparency = 0.16
+			optionsScale.Scale = 0.96
+			tween(optionsFrame, TWEEN_FAST, { BackgroundTransparency = 0.03 })
+			tween(optionsScale, TWEEN_SOFT, { Scale = 1 })
+		else
+			tween(optionsFrame, TWEEN_FAST, { BackgroundTransparency = 0.18 })
+			tween(optionsScale, TWEEN_FAST, { Scale = 0.96 })
+			task.delay(TWEEN_FAST.Time, function()
+				if renderId == currentRenderId and not open then
+					optionsFrame.Visible = false
+				end
+			end)
+		end
 
 		for _, optionButton in ipairs(optionButtons) do
 			paintOption(optionButton, false)
