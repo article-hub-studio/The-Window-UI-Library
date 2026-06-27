@@ -36,13 +36,14 @@ local home = ui:CreateApp({
 
 local settings = home:CreateSection("Settings")
 home:AddLabel("Executor-only floating UI. App tiles switch this same window to another page.", settings)
+local glassGroup = home:CreateGroupBox("Liquid Controls")
 home:AddToggle({
 	Text = "Example toggle",
 	Default = true,
 	Callback = function(enabled)
 		print("Example toggle:", enabled)
 	end,
-}, settings)
+}, glassGroup)
 home:AddSlider({
 	Text = "Opacity",
 	Min = 0,
@@ -52,7 +53,7 @@ home:AddSlider({
 	Callback = function(value)
 		print("Opacity:", value)
 	end,
-}, settings)
+}, glassGroup)
 
 local tools = ui:CreateApp({
 	Name = "Tools",
@@ -62,12 +63,19 @@ local tools = ui:CreateApp({
 })
 
 local actions = tools:CreateSection("Actions")
+local toolsTabs = tools:CreateTabBox({
+	Title = "Toolbox",
+	Tabs = { "Main", "Modes" },
+	Default = "Main",
+}, actions)
+local mainTools = toolsTabs:GetPage("Main")
+local modeTools = toolsTabs:GetPage("Modes")
 tools:AddButton({
 	Text = "Refresh",
 	Callback = function()
 		print("Refresh clicked")
 	end,
-}, actions)
+}, mainTools)
 tools:AddDropdown({
 	Text = "Mode",
 	Options = { "Normal", "Compact", "Focus" },
@@ -75,7 +83,7 @@ tools:AddDropdown({
 	Callback = function(value)
 		print("Mode:", value)
 	end,
-}, actions)
+}, modeTools)
 
 local profile = ui:CreateApp({
 	Name = "Profile",

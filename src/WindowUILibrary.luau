@@ -267,7 +267,21 @@ export type DropdownConfig = {
 	Callback: ((string) -> ())?,
 }
 
+export type TabBoxConfig = {
+	Title: string?,
+	Tabs: { string }?,
+	Default: string?,
+}
+
 type ConnectionList = { RBXScriptConnection }
+type ControlGlassLayers = {
+	Texture: ImageLabel?,
+	Tint: Frame?,
+	Sheen: Frame?,
+	SheenGradient: UIGradient?,
+	IdleTransparency: number,
+	HotTransparency: number,
+}
 
 local DEFAULT_TOPBARPLUS_SOURCE =
 	"https://raw.githubusercontent.com/tanhoangviet/ToolForLua/refs/heads/main/TopbarPlus_Extended.lua"
@@ -275,6 +289,8 @@ local DEFAULT_BACKGROUND_URL =
 	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/dark-stripe-background.jpg"
 local DEFAULT_TOPBAR_GLASS_URL =
 	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/liquid-glass-topbar.jpg"
+local DEFAULT_CONTROL_GLASS_URL =
+	"https://raw.githubusercontent.com/article-hub-studio/The-Window-UI-Library/refs/heads/main/assets/liquid-glass-controls.jpg"
 
 local DEFAULT_THEME = {
 	Accent = Color3.fromRGB(88, 101, 242),
@@ -351,6 +367,7 @@ local THEME_PRESETS: { [string]: Theme } = {
 
 local TWEEN_FAST = TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TWEEN_SOFT = TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local TWEEN_GLASS = TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TWEEN_WINDOW_IN = TweenInfo.new(0.42, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local TWEEN_WINDOW_OUT = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
 local TWEEN_BODY_OUT = TweenInfo.new(0.14, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
@@ -727,6 +744,8 @@ local cachedDefaultBackground: string? = nil
 local triedDefaultBackground = false
 local cachedTopbarGlass: string? = nil
 local triedTopbarGlass = false
+local cachedControlGlass: string? = nil
+local triedControlGlass = false
 
 local function getDefaultBackgroundAsset(): string?
 	if triedDefaultBackground then
@@ -762,6 +781,176 @@ end
 
 function WindowUI.GetTopbarGlass(): string?
 	return getTopbarGlassAsset()
+end
+
+local function getControlGlassAsset(): string?
+	if triedControlGlass then
+		return cachedControlGlass
+	end
+
+	triedControlGlass = true
+	cachedControlGlass = urlAsset(DEFAULT_CONTROL_GLASS_URL, "WindowUILibrary/backgrounds/liquid_glass_controls.jpg")
+	return cachedControlGlass
+end
+
+function WindowUI.GetControlGlass(): string?
+	return getControlGlassAsset()
+end
+
+local function addControlGlass(
+	parent: GuiObject,
+	idleTransparency: number?,
+	hotTransparency: number?,
+	zOffset: number?
+): ControlGlassLayers
+	local baseZ = parent.ZIndex or 1
+	local zIndex = baseZ + (zOffset or 1)
+	local layers: ControlGlassLayers = {
+		Texture = nil,
+		Tint = nil,
+		Sheen = nil,
+		SheenGradient = nil,
+		IdleTransparency = idleTransparency or 0.76,
+		HotTransparency = hotTransparency or 0.58,
+	}
+
+	local texture = getControlGlassAsset()
+	if texture then
+		layers.Texture = create("ImageLabel", {
+			Name = "LiquidGlass",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Image = texture,
+			ImageTransparency = layers.IdleTransparency,
+			ScaleType = Enum.ScaleType.Crop,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = zIndex,
+			Parent = parent,
+		}) :: ImageLabel
+	end
+
+	layers.Tint = create("Frame", {
+		Name = "GlassTint",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.94,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = zIndex + 1,
+		Parent = parent,
+	}) :: Frame
+
+	local edge = create("Frame", {
+		Name = "GlassEdge",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.9,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 1),
+		Size = UDim2.new(1, 0, 0, 10),
+		ZIndex = zIndex + 2,
+		Parent = parent,
+	}) :: Frame
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.55, Color3.fromRGB(152, 210, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+		}),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.52, 0.5),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = edge,
+	})
+
+	layers.Sheen = create("Frame", {
+		Name = "GlassSheen",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.94,
+		BorderSizePixel = 0,
+		Position = UDim2.fromScale(-0.18, 0),
+		Size = UDim2.new(1.36, 0, 1, 0),
+		ZIndex = zIndex + 3,
+		Parent = parent,
+	}) :: Frame
+	layers.SheenGradient = create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(169, 220, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+		}),
+		Offset = Vector2.new(-1.2, 0),
+		Rotation = 16,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.46, 0.96),
+			NumberSequenceKeypoint.new(0.5, 0.54),
+			NumberSequenceKeypoint.new(0.56, 0.96),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = layers.Sheen,
+	}) :: UIGradient
+
+	return layers
+end
+
+local function animateControlGlass(layers: ControlGlassLayers?, active: boolean, sweep: boolean?)
+	if not layers then
+		return
+	end
+
+	if layers.Texture then
+		tween(layers.Texture, TWEEN_GLASS, {
+			ImageTransparency = if active then layers.HotTransparency else layers.IdleTransparency,
+		})
+	end
+	if layers.Tint then
+		tween(layers.Tint, TWEEN_GLASS, {
+			BackgroundTransparency = if active then 0.88 else 0.94,
+		})
+	end
+	if sweep and layers.SheenGradient then
+		layers.SheenGradient.Offset = Vector2.new(-1.15, 0)
+		tween(layers.SheenGradient, TWEEN_SHEEN, { Offset = Vector2.new(1.15, 0) })
+	end
+end
+
+local function playControlSpark(parent: GuiObject, color: Color3)
+	local baseZ = (parent.ZIndex or 1) + 8
+	local points = {
+		Vector2.new(0.2, 0.28),
+		Vector2.new(0.74, 0.22),
+		Vector2.new(0.86, 0.68),
+	}
+
+	for index, point in ipairs(points) do
+		local spark = create("Frame", {
+			Name = "GlassSpark" .. index,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = color,
+			BackgroundTransparency = 0.18,
+			BorderSizePixel = 0,
+			Position = UDim2.fromScale(point.X, point.Y),
+			Rotation = 45,
+			Size = UDim2.fromOffset(if index == 2 then 4 else 3, if index == 2 then 4 else 3),
+			ZIndex = baseZ,
+			Parent = parent,
+		}) :: Frame
+		local sparkScale = create("UIScale", {
+			Scale = 0.72,
+			Parent = spark,
+		}) :: UIScale
+		tween(sparkScale, TWEEN_GLASS, { Scale = if index == 2 then 2.1 else 1.75 })
+		tween(spark, TWEEN_GLASS, {
+			BackgroundTransparency = 1,
+			Rotation = 135,
+		})
+		task.delay(TWEEN_GLASS.Time, function()
+			if spark.Parent then
+				spark:Destroy()
+			end
+		end)
+	end
 end
 
 local function resolveIcon(spec: any, color: Color3): (string?, string?, string?)
@@ -1110,6 +1299,29 @@ local function bindButtonMotion(
 		tween(button, TWEEN_FAST, { BackgroundColor3 = hover })
 		if buttonScale then
 			tween(buttonScale, TWEEN_FAST, { Scale = 1.01 })
+		end
+	end))
+end
+
+local function bindControlGlassMotion(
+	owner: any,
+	button: GuiButton,
+	layers: ControlGlassLayers?,
+	theme: Theme,
+	playSparkOnClick: boolean?
+)
+	owner:_track(button.MouseEnter:Connect(function()
+		animateControlGlass(layers, true, true)
+	end))
+
+	owner:_track(button.MouseLeave:Connect(function()
+		animateControlGlass(layers, false, false)
+	end))
+
+	owner:_track(button.MouseButton1Down:Connect(function()
+		animateControlGlass(layers, true, true)
+		if playSparkOnClick ~= false then
+			playControlSpark(button, theme.Accent or DEFAULT_THEME.Accent)
 		end
 	end))
 end
@@ -1967,11 +2179,13 @@ function WindowUI:_refreshThemeVisuals()
 				descendant.BackgroundColor3 = theme.Topbar or DEFAULT_THEME.Topbar
 			elseif
 				descendant.Name:find("Section", 1, true)
+				or descendant.Name:find("GroupBox", 1, true)
+				or descendant.Name:find("TabBox", 1, true)
 				or descendant.Name == "Dropdown"
 				or descendant.Name == "Slider"
 			then
 				descendant.BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface
-			elseif descendant.Name == "Options" then
+			elseif descendant.Name == "Options" or descendant.Name == "TabRail" then
 				descendant.BackgroundColor3 = theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
 			end
 		end
@@ -2529,6 +2743,299 @@ function App:CreateSection(title: string): Frame
 	return section
 end
 
+function App:CreateGroupBox(title: string, parent: GuiObject?): Frame
+	local theme = self._library._theme
+	local outer = create("Frame", {
+		Name = title .. "GroupBox",
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface,
+		BackgroundTransparency = 0.08,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		Size = UDim2.new(1, 0, 0, 0),
+		ZIndex = 5,
+		Parent = parent or self.Content,
+	}) :: Frame
+	addCorner(outer, UDim.new(0, 12))
+	local stroke = addStroke(outer, theme.Stroke or DEFAULT_THEME.Stroke, 0.5, 1)
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong),
+			ColorSequenceKeypoint.new(1, theme.Surface or DEFAULT_THEME.Surface),
+		}),
+		Rotation = 95,
+		Parent = outer,
+	})
+	create("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.Accent or DEFAULT_THEME.Accent),
+			ColorSequenceKeypoint.new(0.48, Color3.fromRGB(150, 214, 255)),
+			ColorSequenceKeypoint.new(1, theme.Stroke or DEFAULT_THEME.Stroke),
+		}),
+		Rotation = 25,
+		Parent = stroke,
+	})
+	addControlGlass(outer, 0.88, 0.68, 1)
+
+	local label = create("TextLabel", {
+		Name = "GroupTitle",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(12, 8),
+		Size = UDim2.new(1, -24, 0, 20),
+		Text = title,
+		ZIndex = 10,
+		Parent = outer,
+	}) :: TextLabel
+	setText(label, theme.Text or DEFAULT_THEME.Text, 12, Enum.Font.GothamSemibold)
+
+	local content = create("Frame", {
+		Name = "GroupContent",
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(10, 34),
+		Size = UDim2.new(1, -20, 0, 0),
+		ZIndex = 10,
+		Parent = outer,
+	}) :: Frame
+	addPadding(content, 0, 0, 0, 10)
+	addList(content, 8)
+
+	return content
+end
+
+function App:CreateTabBox(config: TabBoxConfig | { string }, parent: GuiObject?): any
+	local theme = self._library._theme
+	local configAny = config :: any
+	local tabs = if type(configAny.Tabs) == "table" then configAny.Tabs else configAny
+	local title = if type(configAny.Title) == "string" then configAny.Title else "Tabs"
+	local defaultTab = if type(configAny.Default) == "string"
+		then configAny.Default
+		else if type(tabs) == "table" then tabs[1] else nil
+	local tabBox: any = {
+		Active = nil,
+		Buttons = {},
+		Container = nil,
+		Pages = {},
+	}
+
+	local outer = create("Frame", {
+		Name = title .. "TabBox",
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = theme.Surface or DEFAULT_THEME.Surface,
+		BackgroundTransparency = 0.1,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		Size = UDim2.new(1, 0, 0, 0),
+		ZIndex = 5,
+		Parent = parent or self.Content,
+	}) :: Frame
+	tabBox.Container = outer
+	addCorner(outer, UDim.new(0, 12))
+	addStroke(outer, theme.Stroke or DEFAULT_THEME.Stroke, 0.55, 1)
+	addControlGlass(outer, 0.9, 0.7, 1)
+
+	local label = create("TextLabel", {
+		Name = "TabBoxTitle",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(12, 8),
+		Size = UDim2.new(1, -24, 0, 18),
+		Text = title,
+		ZIndex = 10,
+		Parent = outer,
+	}) :: TextLabel
+	setText(label, theme.Text or DEFAULT_THEME.Text, 12, Enum.Font.GothamSemibold)
+
+	local tabRail = create("Frame", {
+		Name = "TabRail",
+		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
+		BackgroundTransparency = 0.1,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		Position = UDim2.fromOffset(10, 32),
+		Size = UDim2.new(1, -20, 0, 34),
+		ZIndex = 10,
+		Parent = outer,
+	}) :: Frame
+	addCorner(tabRail, UDim.new(0, 10))
+	addStroke(tabRail, theme.Stroke or DEFAULT_THEME.Stroke, 0.7, 1)
+	addControlGlass(tabRail, 0.86, 0.68, 1)
+
+	local tabRailList = create("Frame", {
+		Name = "TabRailList",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 14,
+		Parent = tabRail,
+	}) :: Frame
+	addPadding(tabRailList, 3, 3, 3, 3)
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tabLayout.Padding = UDim.new(0, 4)
+	tabLayout.Parent = tabRailList
+
+	local pageHolder = create("Frame", {
+		Name = "TabPages",
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(10, 76),
+		Size = UDim2.new(1, -20, 0, 0),
+		ZIndex = 10,
+		Parent = outer,
+	}) :: Frame
+
+	local order = 0
+	local function setButtonState(name: string, selected: boolean)
+		local state = tabBox.Buttons[name]
+		if not state then
+			return
+		end
+
+		local button = state.Button :: TextButton
+		local stroke = state.Stroke :: UIStroke
+		local scale = state.Scale :: UIScale
+		tween(button, TWEEN_FAST, {
+			BackgroundColor3 = if selected
+				then (theme.ButtonHover or DEFAULT_THEME.ButtonHover)
+				else (theme.Button or DEFAULT_THEME.Button),
+		})
+		tween(stroke, TWEEN_FAST, {
+			Transparency = if selected then 0.2 else 0.72,
+			Thickness = if selected then 1.35 else 1,
+		})
+		tween(scale, TWEEN_FAST, { Scale = if selected then 0.97 else 1 })
+		animateControlGlass(state.Glass, selected, selected)
+	end
+
+	function tabBox:SetActive(name: string)
+		if not self.Pages[name] then
+			return
+		end
+
+		self.Active = name
+		for pageName, page in pairs(self.Pages) do
+			local selected = pageName == name
+			page.Visible = selected
+			if selected then
+				local pageScale = page:FindFirstChild("TabPageScale")
+				if pageScale and pageScale:IsA("UIScale") then
+					pageScale.Scale = 0.965
+					tween(pageScale, TWEEN_SOFT, { Scale = 1 })
+				end
+				page.Position = UDim2.fromOffset(8, 0)
+				tween(page, TWEEN_SOFT, { Position = UDim2.fromOffset(0, 0) })
+			end
+			setButtonState(pageName, selected)
+		end
+	end
+
+	function tabBox:GetPage(name: string): Frame?
+		return self.Pages[name]
+	end
+
+	function tabBox:AddTab(name: string): Frame
+		if self.Pages[name] then
+			return self.Pages[name]
+		end
+
+		order += 1
+		local buttonWidth = math.clamp((#name * 7) + 34, 76, 132)
+		local button = create("TextButton", {
+			Name = name .. "Tab",
+			AutoButtonColor = false,
+			BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
+			BackgroundTransparency = 0.04,
+			BorderSizePixel = 0,
+			ClipsDescendants = true,
+			LayoutOrder = order,
+			Size = UDim2.new(0, buttonWidth, 1, -6),
+			Text = name,
+			TextColor3 = theme.Text or DEFAULT_THEME.Text,
+			TextSize = 11,
+			Font = Enum.Font.GothamMedium,
+			ZIndex = 15,
+			Parent = tabRailList,
+		}) :: TextButton
+		button.TextXAlignment = Enum.TextXAlignment.Center
+		addCorner(button, UDim.new(0, 8))
+		local stroke = addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.72, 1)
+		local buttonGlass = addControlGlass(button, 0.82, 0.6, 1)
+		local scale = create("UIScale", {
+			Scale = 1,
+			Parent = button,
+		}) :: UIScale
+
+		local page = create("Frame", {
+			Name = name .. "Page",
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 0, 0),
+			Visible = false,
+			ZIndex = 11,
+			Parent = pageHolder,
+		}) :: Frame
+		create("UIScale", {
+			Name = "TabPageScale",
+			Scale = 1,
+			Parent = page,
+		})
+		addPadding(page, 0, 0, 0, 10)
+		addList(page, 8)
+
+		self.Pages[name] = page
+		self.Buttons[name] = {
+			Button = button,
+			Glass = buttonGlass,
+			Scale = scale,
+			Stroke = stroke,
+		}
+
+		self._app:_track(button.MouseEnter:Connect(function()
+			if self.Active ~= name then
+				tween(button, TWEEN_FAST, { BackgroundColor3 = theme.ButtonHover or DEFAULT_THEME.ButtonHover })
+				animateControlGlass(buttonGlass, true, true)
+				tween(scale, TWEEN_FAST, { Scale = 0.98 })
+			end
+		end))
+		self._app:_track(button.MouseLeave:Connect(function()
+			if self.Active ~= name then
+				tween(button, TWEEN_FAST, { BackgroundColor3 = theme.Button or DEFAULT_THEME.Button })
+				animateControlGlass(buttonGlass, false, false)
+				tween(scale, TWEEN_FAST, { Scale = 1 })
+			end
+		end))
+		self._app:_track(button.MouseButton1Click:Connect(function()
+			playControlSpark(button, theme.Accent or DEFAULT_THEME.Accent)
+			self:SetActive(name)
+		end))
+
+		if not self.Active then
+			self:SetActive(name)
+		end
+		return page
+	end
+
+	tabBox._app = self
+	if type(tabs) == "table" then
+		for _, tabName in ipairs(tabs) do
+			if type(tabName) == "string" and tabName ~= "" then
+				tabBox:AddTab(tabName)
+			end
+		end
+	end
+	if defaultTab then
+		tabBox:SetActive(defaultTab)
+	end
+
+	return tabBox
+end
+
 function App:AddLabel(text: string, parent: GuiObject?): TextLabel
 	local theme = self._library._theme
 	local label = create("TextLabel", {
@@ -2552,6 +3059,7 @@ function App:AddButton(config: ButtonConfig, parent: GuiObject?): TextButton
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		Size = UDim2.new(1, 0, 0, 34),
 		Text = config.Text,
 		TextColor3 = theme.Text or DEFAULT_THEME.Text,
@@ -2571,6 +3079,7 @@ function App:AddButton(config: ButtonConfig, parent: GuiObject?): TextButton
 		Rotation = 90,
 		Parent = button,
 	})
+	local buttonGlass = addControlGlass(button, 0.78, 0.58, 1)
 	bindButtonMotion(
 		self._library,
 		button,
@@ -2578,6 +3087,7 @@ function App:AddButton(config: ButtonConfig, parent: GuiObject?): TextButton
 		theme.ButtonHover or DEFAULT_THEME.ButtonHover,
 		theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
 	)
+	bindControlGlassMotion(self._library, button, buttonGlass, theme, true)
 
 	self:_track(button.MouseButton1Click:Connect(function()
 		safeCallback(config.Callback)
@@ -2617,6 +3127,7 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BackgroundTransparency = 0.02,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		Position = UDim2.new(1, 0, 0.5, 0),
 		Size = UDim2.fromOffset(50, 24),
 		Text = "",
@@ -2633,6 +3144,8 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		Rotation = 90,
 		Parent = button,
 	})
+	local switchGlass = addControlGlass(button, 0.82, 0.56, 1)
+	bindControlGlassMotion(self._library, button, switchGlass, theme, false)
 
 	local knob = create("Frame", {
 		Name = "Knob",
@@ -2666,7 +3179,21 @@ function App:AddToggle(config: ToggleConfig, parent: GuiObject?): Frame
 		})
 		if fire then
 			knobScale.Scale = 0.84
-			tween(knobScale, TWEEN_SOFT, { Scale = 1 })
+			tween(knobScale, TWEEN_SOFT, { Scale = 1.04 })
+			task.delay(TWEEN_SOFT.Time * 0.58, function()
+				if knobScale.Parent then
+					tween(knobScale, TWEEN_FAST, { Scale = 1 })
+				end
+			end)
+			animateControlGlass(switchGlass, true, true)
+			playControlSpark(button, activeTheme.Accent or DEFAULT_THEME.Accent)
+			task.delay(TWEEN_GLASS.Time, function()
+				if button.Parent then
+					animateControlGlass(switchGlass, enabled, false)
+				end
+			end)
+		else
+			animateControlGlass(switchGlass, enabled, false)
 		end
 		if fire then
 			safeValueCallback(config.Callback, enabled)
@@ -2931,6 +3458,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		AutoButtonColor = false,
 		BackgroundColor3 = theme.Button or DEFAULT_THEME.Button,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		Position = UDim2.fromOffset(10, 29),
 		Size = UDim2.new(1, -20, 0, 30),
 		Text = selected,
@@ -2944,6 +3472,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 	addCorner(button, UDim.new(0, 8))
 	addPadding(button, 10, 0, 10, 0)
 	addStroke(button, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
+	local dropdownButtonGlass = addControlGlass(button, 0.8, 0.58, 1)
 	bindButtonMotion(
 		self._library,
 		button,
@@ -2951,6 +3480,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		theme.ButtonHover or DEFAULT_THEME.ButtonHover,
 		theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
 	)
+	bindControlGlassMotion(self._library, button, dropdownButtonGlass, theme, false)
 
 	local arrow = create("TextLabel", {
 		Name = "Arrow",
@@ -2974,15 +3504,26 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		BackgroundColor3 = theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong,
 		BackgroundTransparency = 0.03,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		Position = UDim2.fromOffset(10, 68),
-		Size = UDim2.new(1, -20, 0, #options * 28),
+		Size = UDim2.new(1, -20, 0, (#options * 30) + 8),
 		Visible = false,
 		ZIndex = 7,
 		Parent = row,
 	}) :: Frame
 	addCorner(optionsFrame, UDim.new(0, 8))
 	addStroke(optionsFrame, theme.Stroke or DEFAULT_THEME.Stroke, 0.6, 1)
-	addList(optionsFrame, 0)
+	local optionsGlass = addControlGlass(optionsFrame, 0.82, 0.62, 1)
+	local optionsList = create("Frame", {
+		Name = "OptionsList",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 10,
+		Parent = optionsFrame,
+	}) :: Frame
+	addPadding(optionsList, 4, 4, 4, 4)
+	addList(optionsList, 2)
 	local optionsScale = create("UIScale", {
 		Scale = 0.96,
 		Parent = optionsFrame,
@@ -3005,10 +3546,11 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 		renderId += 1
 		local currentRenderId = renderId
 		local activeTheme = self._library._theme
-		local optionHeight = #options * 28
+		local optionHeight = (#options * 30) + 8
 		optionsFrame.BackgroundColor3 = activeTheme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong
 		arrow.Text = "v"
 		tween(arrow, TWEEN_FAST, { Rotation = if open then 180 else 0 })
+		animateControlGlass(dropdownButtonGlass, open, true)
 		tween(row, TWEEN_SOFT, {
 			Size = if open then UDim2.new(1, 0, 0, 74 + optionHeight) else UDim2.new(1, 0, 0, 64),
 		})
@@ -3016,9 +3558,12 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 			optionsFrame.Visible = true
 			optionsFrame.BackgroundTransparency = 0.16
 			optionsScale.Scale = 0.96
+			animateControlGlass(optionsGlass, true, true)
+			playControlSpark(button, activeTheme.Accent or DEFAULT_THEME.Accent)
 			tween(optionsFrame, TWEEN_FAST, { BackgroundTransparency = 0.03 })
 			tween(optionsScale, TWEEN_SOFT, { Scale = 1 })
 		else
+			animateControlGlass(optionsGlass, false, false)
 			tween(optionsFrame, TWEEN_FAST, { BackgroundTransparency = 0.18 })
 			tween(optionsScale, TWEEN_FAST, { Scale = 0.96 })
 			task.delay(TWEEN_FAST.Time, function()
@@ -3038,16 +3583,19 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 			Name = option,
 			AutoButtonColor = false,
 			BackgroundColor3 = theme.SurfaceStrong or DEFAULT_THEME.SurfaceStrong,
+			BackgroundTransparency = 0.08,
 			BorderSizePixel = 0,
-			Size = UDim2.new(1, 0, 0, 28),
+			ClipsDescendants = true,
+			Size = UDim2.new(1, 0, 0, 30),
 			Text = option,
 			TextColor3 = theme.MutedText or DEFAULT_THEME.MutedText,
 			TextSize = 11,
 			Font = Enum.Font.GothamMedium,
-			ZIndex = 8,
-			Parent = optionsFrame,
+			ZIndex = 11,
+			Parent = optionsList,
 		}) :: TextButton
 		optionButton.TextXAlignment = Enum.TextXAlignment.Left
+		addCorner(optionButton, UDim.new(0, 6))
 		addPadding(optionButton, 10, 0, 10, 0)
 		table.insert(optionButtons, optionButton)
 		self:_track(optionButton.MouseEnter:Connect(function()
@@ -3062,6 +3610,7 @@ function App:AddDropdown(config: DropdownConfig, parent: GuiObject?): Frame
 			button.Text = selected
 			open = false
 			renderOpen()
+			playControlSpark(button, self._library._theme.Accent or DEFAULT_THEME.Accent)
 			safeValueCallback(config.Callback, selected)
 		end))
 	end
